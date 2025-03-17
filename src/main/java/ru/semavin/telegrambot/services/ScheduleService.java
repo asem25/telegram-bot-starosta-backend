@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -22,39 +23,56 @@ public class ScheduleService {
     private final ScheduleMapper scheduleMapper;
     private final SemesterService semesterService;
 
-    public List<ScheduleDTO> getScheduleFromDataBase(String groupName, String week){
-        List<ScheduleDTO> scheduleDTOS;
-        if (week != null) {
-            scheduleDTOS = scheduleMapper.toScheduleDTOList(scheduleRepository.findAllByGroupNameIgnoreCaseAndLessonWeek(groupName, Integer.parseInt(week)));
-        }else{
-            String currentWeek = semesterService.getCurrentWeek();
-            scheduleDTOS =  scheduleMapper.toScheduleDTOList(scheduleRepository.findAllByGroupNameIgnoreCaseAndLessonWeek(groupName, Integer.parseInt(currentWeek)));
-        }
-        if (scheduleDTOS.isEmpty()){
-            return getActualSchedule(groupName, week);
-        }
-        return scheduleDTOS;
+    /**
+     * Получение расписания из БД или, если оно отсутствует, загрузка актуального
+     */
+    public List<ScheduleDTO> getScheduleFromDataBase(String groupName, String week) {
+        String actualWeek = (week != null) ? week : semesterService.getCurrentWeek();
+        List<ScheduleDTO> scheduleDTOS = scheduleMapper.toScheduleDTOList(
+                scheduleRepository.findAllByGroupNameIgnoreCaseAndLessonWeek(groupName, Integer.parseInt(actualWeek))
+        );
+
+        return scheduleDTOS.isEmpty() ? getActualSchedule(groupName, actualWeek) : scheduleDTOS;
     }
-    public List<ScheduleDTO> getActualSchedule(String groupName, String week){
-        List<ScheduleEntity> scheduleEntities;
-        try {
-            scheduleEntities = scheduleRepository.saveAll(scheduleParserService.findScheduleByGroup(groupName, week));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return scheduleMapper.toScheduleDTOList(scheduleEntities);
-    }
-    public List<ScheduleDTO> getScheduleForCurrentDay(String groupName){
-        LocalDate now = LocalDate.now();
-        if (!scheduleRepository.existsByLessonDate(now)) {
-            List<ScheduleEntity> entities;
+
+    /**
+     * Получение актуального расписания с использованием многопоточности
+     */
+    public List<ScheduleDTO> getActualSchedule(String groupName, String week) {
+        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> {
             try {
-                entities = scheduleParserService.findScheduleByGroup(groupName);
+                return scheduleParserService.findScheduleByGroup(groupName, week);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                log.error("Ошибка при парсинге расписания для группы {}: {}", groupName, e.getMessage(), e);
+                return new ArrayList<>();
             }
-            return scheduleMapper.toScheduleDTOList(scheduleRepository.saveAll(entities));
+        });
+
+        List<ScheduleEntity> scheduleEntities = future.join(); // Ожидание завершения задачи
+        return scheduleMapper.toScheduleDTOList(scheduleRepository.saveAll(scheduleEntities));
+    }
+
+    /**
+     * Получение расписания на текущий день с параллельной загрузкой
+     */
+    public List<ScheduleDTO> getScheduleForCurrentDay(String groupName) {
+        LocalDate now = LocalDate.now();
+        List<ScheduleEntity> schedules = scheduleRepository.findAllByLessonDateAndGroupName(now, groupName);
+
+        if (!schedules.isEmpty()) {
+            return scheduleMapper.toScheduleDTOList(schedules);
         }
-        return scheduleMapper.toScheduleDTOList(scheduleRepository.findAllByLessonDateAndGroupName(now, groupName));
+
+        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> {
+            try {
+                return scheduleParserService.findScheduleByGroup(groupName);
+            } catch (IOException e) {
+                log.error("Ошибка при парсинге расписания для группы {} на текущий день: {}", groupName, e.getMessage(), e);
+                return new ArrayList<>();
+            }
+        });
+
+        List<ScheduleEntity> scheduleEntities = future.join();
+        return scheduleMapper.toScheduleDTOList(scheduleRepository.saveAll(scheduleEntities));
     }
 }
