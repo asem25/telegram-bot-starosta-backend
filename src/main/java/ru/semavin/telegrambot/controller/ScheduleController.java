@@ -19,9 +19,13 @@ import java.util.List;
 public class ScheduleController {
     private final ScheduleService scheduleService;
 
-    @GetMapping()
+    @GetMapping("/week")
     public ResponseEntity<List<ScheduleDTO>> getSchedule(@RequestParam String groupName,
                                                          @RequestParam(required = false) String week){
         return ResponseEntity.ok(scheduleService.getScheduleFromDataBase(groupName, week));
+    }
+    @GetMapping("/currentDay")
+    public ResponseEntity<List<ScheduleDTO>> getScheduleForCurrentDay(@RequestParam String groupName){
+        return ResponseEntity.ok(scheduleService.getScheduleForCurrentDay(groupName));
     }
 }

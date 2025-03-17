@@ -52,4 +52,5 @@ public class SemesterService {
         log.info("Сегодня: {}, разница в днях: {}, текущая неделя: {}", today, daysBetween, weekNumber);
         return String.valueOf(weekNumber);
     }
+
 }

@@ -1,6 +1,5 @@
 package ru.semavin.telegrambot.services;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -68,13 +67,29 @@ public class ScheduleParserService {
      * @throws IOException Если возникает ошибка подключения
      */
     public List<ScheduleEntity> findScheduleByGroup(String groupName, String week) throws IOException {
-        log.info("Начало парсинга расписания для группы: {}", groupName);
+        log.info("Начало парсинга расписания для группы, текущей недели: {}", groupName);
         try {
             Map<String, String> cookies = getCookiesForGroup(groupName);
             log.info("Получены куки для группы {}: {}", groupName, cookies);
             Document schedulePage = getSchedulePage(groupName, cookies, week);
             log.info("Загружена страница расписания для группы: {}", groupName);
-            List<ScheduleEntity> schedule = parseSchedule(schedulePage, groupName, week);
+            List<ScheduleEntity> schedule = parseScheduleForWeek(schedulePage, groupName);
+            log.info("Найдено {} пар для группы {}", schedule.size(), groupName);
+            return schedule;
+        } catch (IOException e) {
+            log.error("Ошибка при парсинге расписания для группы {}: {}", groupName, e.getMessage(), e);
+        }
+        return new ArrayList<>();
+    }
+    public List<ScheduleEntity> findScheduleByGroup(String groupName) throws IOException {
+        log.info("Начало парсинга расписания для группы, текущего дня: {}", groupName);
+        try {
+            String week = null;
+            Map<String, String> cookies = getCookiesForGroup(groupName);
+            log.info("Получены куки для группы {}: {}", groupName, cookies);
+            Document schedulePage = getSchedulePage(groupName, cookies, week);
+            log.info("Загружена страница расписания для группы: {}", groupName);
+            List<ScheduleEntity> schedule = parseScheduleForCurrentDay(schedulePage, groupName);
             log.info("Найдено {} пар для группы {}", schedule.size(), groupName);
             return schedule;
         } catch (IOException e) {
@@ -114,11 +129,9 @@ public class ScheduleParserService {
     private Document getSchedulePage(String groupName, Map<String, String> cookies, String week) throws IOException {
         String url = "https://mai.ru/education/studies/schedule/index.php?group=" +
                 URLEncoder.encode(groupName, StandardCharsets.UTF_8);
-        if (week == null) {
-            log.debug("Запрос на учебную неделю номер: {}", week);
+        if (week == null) {;
             url += "&week=" + URLEncoder.encode(String.valueOf(CURRENT_WEEK), StandardCharsets.UTF_8);
         }else {
-            log.debug("Запрос на учебную неделю номер: {}", week);
             url += "&week=" + URLEncoder.encode(week, StandardCharsets.UTF_8);
         }
         log.debug("Запрос страницы расписания с URL: {}", url);
@@ -136,7 +149,7 @@ public class ScheduleParserService {
      * @param groupName Имя группы
      * @return Список объектов расписания
      */
-    private List<ScheduleEntity> parseSchedule(Document doc, String groupName, String week) {
+    private List<ScheduleEntity> parseScheduleForWeek(Document doc, String groupName) {
         List<ScheduleEntity> scheduleList = new ArrayList<>();
         Elements dayElements = doc.select("li.step-item");
         if (dayElements.isEmpty()) {
@@ -154,12 +167,37 @@ public class ScheduleParserService {
                 log.warn("Пропускаем день из-за ошибки парсинга даты.");
                 continue;
             }
-            List<ScheduleEntity> dayLessons = parseLessonsForDay(dayElement, groupName, lessonDate, timeFormatter, week);
+            List<ScheduleEntity> dayLessons = parseLessonsForDay(dayElement, groupName, lessonDate, timeFormatter);
             scheduleList.addAll(dayLessons);
         }
         return scheduleList;
     }
 
+    private List<ScheduleEntity> parseScheduleForCurrentDay(Document doc, String groupName){
+        List<ScheduleEntity> scheduleList = new ArrayList<>();
+        Elements dayElements = doc.select("li.step-item");
+        if (dayElements.isEmpty()) {
+            log.warn("Для группы {} расписание не найдено.", groupName);
+            return scheduleList;
+        }
+
+        int currentYear = LocalDate.now().getYear();
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy", new Locale("ru"));
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("H:mm");
+
+        for (Element dayElement : dayElements) {
+            LocalDate lessonDate = extractDate(dayElement, currentYear, dateFormatter);
+            if (lessonDate != null) {
+                if (lessonDate.getDayOfWeek() != LocalDate.now().getDayOfWeek()) {
+                    continue;
+                }
+            }
+            List<ScheduleEntity> dayLessons = parseLessonsForDay(dayElement, groupName, lessonDate, timeFormatter);
+            scheduleList.addAll(dayLessons);
+            break;
+        }
+        return scheduleList;
+    }
     /**
      * Извлекает дату пары из элемента дня.
      *
@@ -191,7 +229,7 @@ public class ScheduleParserService {
      * @param timeFormatter Форматтер для парсинга времени
      * @return Список объектов ScheduleEntity, соответствующих пар данного дня
      */
-    private  List<ScheduleEntity> parseLessonsForDay(Element dayElement, String groupName, LocalDate lessonDate, DateTimeFormatter timeFormatter, String week) {
+    private  List<ScheduleEntity> parseLessonsForDay(Element dayElement, String groupName, LocalDate lessonDate, DateTimeFormatter timeFormatter) {
         List<ScheduleEntity> lessons = new ArrayList<>();
         Elements lessonElements = dayElement.select("div.mb-4");
         log.debug("Найдено {} пар для дня {} группы {}", lessonElements.size(), lessonDate, groupName);

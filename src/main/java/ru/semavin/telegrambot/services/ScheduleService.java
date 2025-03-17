@@ -9,6 +9,8 @@ import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.repositories.ScheduleRepository;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -41,5 +43,18 @@ public class ScheduleService {
             throw new RuntimeException(e);
         }
         return scheduleMapper.toScheduleDTOList(scheduleEntities);
+    }
+    public List<ScheduleDTO> getScheduleForCurrentDay(String groupName){
+        LocalDate now = LocalDate.now();
+        if (!scheduleRepository.existsByLessonDate(now)) {
+            List<ScheduleEntity> entities;
+            try {
+                entities = scheduleParserService.findScheduleByGroup(groupName);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return scheduleMapper.toScheduleDTOList(scheduleRepository.saveAll(entities));
+        }
+        return scheduleMapper.toScheduleDTOList(scheduleRepository.findAllByLessonDateAndGroupName(now, groupName));
     }
 }
