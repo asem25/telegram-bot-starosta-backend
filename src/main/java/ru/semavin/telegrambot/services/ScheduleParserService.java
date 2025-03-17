@@ -125,13 +125,12 @@ public class ScheduleParserService {
                 .parallelStream()
                 .map(dayElement -> {
                     LocalDate lessonDate = extractDate(dayElement, currentYear);
-                    // Если дата не распарсилась или не проходит по фильтру – пропускаем
                     if (lessonDate == null || !dayFilter.test(lessonDate)) {
                         return Collections.<ScheduleEntity>emptyList();
                     }
                     return parseLessonsForDay(dayElement, groupName, lessonDate);
                 })
-                .flatMap(List::stream) // разглаживаем списки в единый
+                .flatMap(List::stream)
                 .collect(Collectors.toList());
 
         log.info("Найдено {} пар(ы) для группы {}", scheduleList.size(), groupName);
