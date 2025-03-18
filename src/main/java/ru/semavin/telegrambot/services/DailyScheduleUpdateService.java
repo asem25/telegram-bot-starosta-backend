@@ -27,7 +27,7 @@ public class DailyScheduleUpdateService {
      * Метод, запускаемый ежедневно в 20:00 вечера.
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
      */
-    @Scheduled(cron = "0 0 20 * * *", initialDelay = 5000)
+    @Scheduled(cron = "0 0 20 * * *")
     public void updateDailySchedules() {
         log.info("Начало ежедневного обновления расписания.");
         String currentWeek = semesterService.getCurrentWeek();
