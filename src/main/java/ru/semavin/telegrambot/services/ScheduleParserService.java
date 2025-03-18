@@ -80,7 +80,25 @@ public class ScheduleParserService {
 
         return response.cookies();
     }
+    /**
+     * Парсит расписание только за указанный день.
+     *
+     * @param groupName Имя группы
+     * @param targetDate Дата, за которую нужно получить расписание
+     * @return список пар на указанный день
+     */
+    public List<ScheduleEntity> findScheduleByGroupAndDate(String groupName, LocalDate targetDate) throws IOException {
+        log.info("Начало парсинга расписания для группы {}, дата: {}", groupName, targetDate);
 
+        Map<String, String> cookies = getCookiesForGroup(groupName);
+        Document schedulePage = getSchedulePage(groupName, cookies, null);
+
+        // Фильтр на нужный день
+        Predicate<LocalDate> dayFilter = date -> date.equals(targetDate);
+
+        // Парсим расписание только для указанного дня
+        return parseSchedule(schedulePage, groupName, dayFilter);
+    }
     /**
      * Получить HTML-страницу с расписанием (учитываем week, если указана).
      */

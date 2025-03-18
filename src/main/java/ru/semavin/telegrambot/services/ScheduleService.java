@@ -104,7 +104,6 @@ public class ScheduleService {
     @Transactional
     public List<ScheduleDTO> getScheduleForCurrentDay(String groupName) {
         LocalDate now = LocalDate.now();
-        int week = Integer.parseInt(semesterService.getCurrentWeek());
         List<ScheduleEntity> schedules = scheduleRepository.findAllByLessonDateAndGroupName(now, groupName);
 
         if (!schedules.isEmpty()) {
@@ -113,7 +112,7 @@ public class ScheduleService {
 
         CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> {
             try {
-                return scheduleParserService.findScheduleByGroup(groupName);
+                return scheduleParserService.findScheduleByGroupAndDate(groupName, now);
             } catch (IOException e) {
                 log.error("Ошибка при парсинге расписания для группы {} на текущий день: {}", groupName, e.getMessage(), e);
                 return new ArrayList<>();
@@ -121,8 +120,6 @@ public class ScheduleService {
         });
 
         List<ScheduleEntity> scheduleEntities = future.join();
-
-        scheduleRepository.deleteAllByGroupNameIgnoreCaseAndLessonWeek(groupName, week);
 
         List<ScheduleEntity> savedEntities = scheduleRepository.saveAll(scheduleEntities);
 
