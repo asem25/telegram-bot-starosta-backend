@@ -1,4 +1,4 @@
-package ru.semavin.telegrambot.services;
+package ru.semavin.telegrambot.services.schedules;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
@@ -44,27 +44,14 @@ public class ScheduleParserService {
      * Главный метод: парсит расписание за любую неделю (или текущую, если week == null).
      */
     public List<ScheduleEntity> findScheduleByGroup(String groupName, String week) throws IOException {
-        log.info("Начало парсинга расписания для группы {}, неделя: {}", groupName, (week != null ? week : CURRENT_WEEK));
+        int actualWeek = week != null ? Integer.parseInt(week) : CURRENT_WEEK;
+        log.info("Начало парсинга расписания для группы {}, неделя: {}", groupName, (actualWeek));
 
         Map<String, String> cookies = getCookiesForGroup(groupName);
-        Document schedulePage = getSchedulePage(groupName, cookies, week);
+        Document schedulePage = getSchedulePage(groupName, cookies, actualWeek);
 
         // Парсим все дни (фильтр – любой день)
-        return parseSchedule(schedulePage, groupName, date -> true);
-    }
-
-    /**
-     * Парсит расписание только на текущий день (dayOfWeek = сегодня).
-     */
-    public List<ScheduleEntity> findScheduleByGroup(String groupName) throws IOException {
-        log.info("Начало парсинга расписания для группы {}, только текущий день", groupName);
-
-        Map<String, String> cookies = getCookiesForGroup(groupName);
-        Document schedulePage = getSchedulePage(groupName, cookies, null);
-
-        // Парсим дни (фильтр – только сегодня)
-        LocalDate now = LocalDate.now();
-        return parseSchedule(schedulePage, groupName, date -> date.equals(now));
+        return parseSchedule(schedulePage, groupName, date -> true, actualWeek);
     }
 
     /**
@@ -80,35 +67,16 @@ public class ScheduleParserService {
 
         return response.cookies();
     }
-    /**
-     * Парсит расписание только за указанный день.
-     *
-     * @param groupName Имя группы
-     * @param targetDate Дата, за которую нужно получить расписание
-     * @return список пар на указанный день
-     */
-    public List<ScheduleEntity> findScheduleByGroupAndDate(String groupName, LocalDate targetDate) throws IOException {
-        log.info("Начало парсинга расписания для группы {}, дата: {}", groupName, targetDate);
 
-        Map<String, String> cookies = getCookiesForGroup(groupName);
-        Document schedulePage = getSchedulePage(groupName, cookies, null);
-
-        // Фильтр на нужный день
-        Predicate<LocalDate> dayFilter = date -> date.equals(targetDate);
-
-        // Парсим расписание только для указанного дня
-        return parseSchedule(schedulePage, groupName, dayFilter);
-    }
     /**
      * Получить HTML-страницу с расписанием (учитываем week, если указана).
      */
-    private Document getSchedulePage(String groupName, Map<String, String> cookies, String week) throws IOException {
+    private Document getSchedulePage(String groupName, Map<String, String> cookies, int week) throws IOException {
         String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupName, StandardCharsets.UTF_8);
 
-        // Если неделя не указана, используем текущую
-        int requestedWeek = (week == null) ? CURRENT_WEEK : Integer.parseInt(week);
 
-        url += "&week=" + URLEncoder.encode(String.valueOf(requestedWeek), StandardCharsets.UTF_8);
+
+        url += "&week=" + URLEncoder.encode(String.valueOf(week), StandardCharsets.UTF_8);
         log.debug("Запрашиваем страницу расписания: {}", url);
 
         return Jsoup.connect(url)
@@ -126,7 +94,7 @@ public class ScheduleParserService {
      * @param dayFilter Условие, по которому отбираются дни (например, "только сегодня")
      * @return Список распарсенных пар
      */
-    private List<ScheduleEntity> parseSchedule(Document doc, String groupName, Predicate<LocalDate> dayFilter) {
+    private List<ScheduleEntity> parseSchedule(Document doc, String groupName, Predicate<LocalDate> dayFilter, int week) {
         List<ScheduleEntity> scheduleList = new ArrayList<>();
         Elements dayElements = doc.select("li.step-item");
 
@@ -145,7 +113,7 @@ public class ScheduleParserService {
                     if (lessonDate == null || !dayFilter.test(lessonDate)) {
                         return Collections.<ScheduleEntity>emptyList();
                     }
-                    return parseLessonsForDay(dayElement, groupName, lessonDate);
+                    return parseLessonsForDay(dayElement, groupName, lessonDate, week);
                 })
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
@@ -180,12 +148,12 @@ public class ScheduleParserService {
     /**
      * Парсит все пары для конкретного дня.
      */
-    private List<ScheduleEntity> parseLessonsForDay(Element dayElement, String groupName, LocalDate lessonDate) {
+    private List<ScheduleEntity> parseLessonsForDay(Element dayElement, String groupName, LocalDate lessonDate, int week) {
         List<ScheduleEntity> lessons = new ArrayList<>();
         Elements lessonElements = dayElement.select("div.mb-4");
 
         for (Element lessonElement : lessonElements) {
-            ScheduleEntity entity = parseLesson(lessonElement, groupName, lessonDate);
+            ScheduleEntity entity = parseLesson(lessonElement, groupName, lessonDate, week);
             if (entity != null) {
                 lessons.add(entity);
             }
@@ -196,7 +164,7 @@ public class ScheduleParserService {
     /**
      * Парсит одну пару: предмет, тип, время, преподавателя, аудиторию.
      */
-    private ScheduleEntity parseLesson(Element lessonElement, String groupName, LocalDate lessonDate) {
+    private ScheduleEntity parseLesson(Element lessonElement, String groupName, LocalDate lessonDate, int week) {
         Element subjectElement = lessonElement.selectFirst("p.mb-2.fw-semi-bold.text-dark");
         if (subjectElement == null) {
             log.warn("Не найден элемент с названием предмета.");
@@ -244,7 +212,7 @@ public class ScheduleParserService {
                 .groupName(groupName)
                 .subjectName(subjectName)
                 .lessonType(lessonType)
-                .lessonWeek(CURRENT_WEEK)
+                .lessonWeek(week)
                 .teacherName(teacherName.isBlank() || teacherName.isEmpty() ? "Не указан" : teacherName)
                 .classroom(classroom)
                 .lessonDate(lessonDate)

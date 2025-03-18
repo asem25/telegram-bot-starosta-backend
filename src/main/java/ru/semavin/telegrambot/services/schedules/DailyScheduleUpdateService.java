@@ -1,4 +1,4 @@
-package ru.semavin.telegrambot.services;
+package ru.semavin.telegrambot.services.schedules;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

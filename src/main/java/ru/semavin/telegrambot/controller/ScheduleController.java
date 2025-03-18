@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
-import ru.semavin.telegrambot.services.ScheduleService;
+import ru.semavin.telegrambot.services.schedules.ScheduleService;
 
 import java.util.List;
 
