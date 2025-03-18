@@ -25,14 +25,15 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+
 public class ScheduleParserService {
     private static final String USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                     "(KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy", new Locale("ru"));
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm");
-
-    // Текущая неделя для семестра
+    private static final String SCHEDULE_URL = "https://mai.ru/education/studies/schedule/";
+    private static final String GROUP_URL = "index.php?group=";
     private final int CURRENT_WEEK;
 
     public ScheduleParserService(SemesterService semesterService) {
@@ -70,12 +71,11 @@ public class ScheduleParserService {
      * Получить куки для определённой группы.
      */
     private static Map<String, String> getCookiesForGroup(String groupName) throws IOException {
-        String url = "https://mai.ru/education/studies/schedule/index.php?group=" +
-                URLEncoder.encode(groupName, StandardCharsets.UTF_8);
+        String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupName, StandardCharsets.UTF_8);
 
         Connection.Response response = Jsoup.connect(url)
                 .userAgent(USER_AGENT)
-                .referrer("https://mai.ru/education/studies/schedule/")
+                .referrer(SCHEDULE_URL)
                 .execute();
 
         return response.cookies();
@@ -85,8 +85,7 @@ public class ScheduleParserService {
      * Получить HTML-страницу с расписанием (учитываем week, если указана).
      */
     private Document getSchedulePage(String groupName, Map<String, String> cookies, String week) throws IOException {
-        String url = "https://mai.ru/education/studies/schedule/index.php?group=" +
-                URLEncoder.encode(groupName, StandardCharsets.UTF_8);
+        String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupName, StandardCharsets.UTF_8);
 
         // Если неделя не указана, используем текущую
         int requestedWeek = (week == null) ? CURRENT_WEEK : Integer.parseInt(week);
@@ -96,7 +95,7 @@ public class ScheduleParserService {
 
         return Jsoup.connect(url)
                 .userAgent(USER_AGENT)
-                .referrer("https://mai.ru/education/studies/schedule/")
+                .referrer(SCHEDULE_URL)
                 .cookies(cookies)
                 .get();
     }
@@ -228,7 +227,7 @@ public class ScheduleParserService {
                 .subjectName(subjectName)
                 .lessonType(lessonType)
                 .lessonWeek(CURRENT_WEEK)
-                .teacherName(teacherName)
+                .teacherName(teacherName.isBlank() || teacherName.isEmpty() ? "Не указан" : teacherName)
                 .classroom(classroom)
                 .lessonDate(lessonDate)
                 .startTime(startTime)
