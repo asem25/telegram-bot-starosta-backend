@@ -73,7 +73,7 @@ public class ScheduleService {
 
         List<ScheduleEntity> newEntities = scheduleEntities.parallelStream()
                 .filter(entity -> {
-                    boolean exists = !scheduleRepository
+                    boolean exists = scheduleRepository
                             .existsByGroupNameIgnoreCaseAndLessonDateAndStartTimeAndSubjectName(
                                     entity.getGroupName(),
                                     entity.getLessonDate(),
