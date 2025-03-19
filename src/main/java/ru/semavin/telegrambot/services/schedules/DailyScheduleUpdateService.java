@@ -28,6 +28,7 @@ public class DailyScheduleUpdateService {
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
      */
     @Scheduled(cron = "0 0 20 * * *")
+
     public void updateDailySchedules() {
         log.info("Начало ежедневного обновления расписания.");
         String currentWeek = semesterService.getCurrentWeek();

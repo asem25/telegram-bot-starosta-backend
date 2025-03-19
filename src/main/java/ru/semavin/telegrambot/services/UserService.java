@@ -16,6 +16,9 @@ public class UserService {
     private final UserMapper userMapper;
     public String save(UserDTO user){
         log.info("Saving user: {}", user);
+
+        user.setRole("STUDENT");
+
         UserEntity fromRepository = userRepository.save(userMapper.userDTOToUser(user));
         log.info("User saved: {}", fromRepository);
         return fromRepository.getUsername();

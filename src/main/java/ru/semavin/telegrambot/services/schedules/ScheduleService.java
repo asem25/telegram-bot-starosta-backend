@@ -2,6 +2,8 @@ package ru.semavin.telegrambot.services.schedules;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
@@ -32,6 +34,7 @@ public class ScheduleService {
      * Если расписания нет, загружает актуальное.
      */
     @Transactional
+    @Cacheable(value = "scheduleCache", key = "#groupName + '-' + #week")
     public List<ScheduleDTO> getScheduleFromDataBase(String groupName, String week) {
         String actualWeek = (week != null) ? week : semesterService.getCurrentWeek();
         int currentWeek = Integer.parseInt(actualWeek);
@@ -52,6 +55,7 @@ public class ScheduleService {
      * Получает актуальное расписание для указанной группы и недели, парсит сайт и сохраняет в БД.
      */
     @Transactional
+    @CacheEvict(value = "scheduleCache", key = "#groupName + '-' + #week")
     public List<ScheduleDTO> getActualSchedule(String groupName, String week) {
         CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> {
             try {
