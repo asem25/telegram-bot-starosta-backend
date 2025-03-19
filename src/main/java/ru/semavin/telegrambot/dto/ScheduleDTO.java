@@ -1,22 +1,43 @@
 package ru.semavin.telegrambot.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+/**
+ * DTO для расписания.
+ */
 @Data
 @Builder
 @AllArgsConstructor
+@Schema(description = "DTO для расписания")
 public class ScheduleDTO {
+
+    @Schema(description = "Название группы", example = "М3О-303С-22")
     private String groupName;
+
+    @Schema(description = "Название предмета", example = "ОТУ")
     private String subjectName;
-    private String lessonType;  // ЛК, ПЗ, ЛР
+
+    @Schema(description = "Тип занятия (ЛК, ПЗ, ЛР)", example = "ЛК")
+    private String lessonType; // ЛК, ПЗ, ЛР
+
+    @Schema(description = "Имя преподавателя", example = "Иванов Иван Иванович")
     private String teacherName;
+
+    @Schema(description = "Аудитория", example = "Ауд. 301")
     private String classroom;
+
+    @Schema(description = "Дата занятия", example = "2025-03-20")
     private LocalDate lessonDate;
+
+    @Schema(description = "Время начала занятия", example = "10:00")
     private LocalTime startTime;
+
+    @Schema(description = "Время окончания занятия", example = "11:30")
     private LocalTime endTime;
 }
