@@ -47,8 +47,8 @@ public class SemesterService {
     /**
      * Возвращает форматированную дату форматтером
      *
-     * @param date
-     * @return
+     * @param date в виде строки
+     * @return дату в формате заданном форматтере {@link DateUtils}
      */
     public LocalDate getFormatterDate(String date) {
         return LocalDate.parse(date, DateUtils.FORMATTER);
