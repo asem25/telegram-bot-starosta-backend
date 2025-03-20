@@ -3,10 +3,10 @@ package ru.semavin.telegrambot.services.schedules;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import ru.semavin.telegrambot.utils.DateUtils;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
 /**
@@ -20,6 +20,8 @@ public class SemesterService {
 
     private final LocalDate semesterStart;
 
+
+
     /**
      * Конструктор, принимающий дату начала семестра в виде строки из конфигурации.
      *
@@ -27,8 +29,7 @@ public class SemesterService {
      */
     public SemesterService(@Value("${semester.start}") String semesterStartStr) {
         // Определяем формат даты (например, "dd.MM.yyyy")
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        this.semesterStart = LocalDate.parse(semesterStartStr, fmt);
+        this.semesterStart = LocalDate.parse(semesterStartStr, DateUtils.FORMATTER);
         log.info("Дата начала семестра установлена через конфигурацию: {}", this.semesterStart);
     }
 
@@ -39,17 +40,58 @@ public class SemesterService {
      */
     public String getCurrentWeek() {
         LocalDate today = LocalDate.now();
-        if (today.isBefore(semesterStart)) {
-            log.info("Семестр ещё не начался: сегодня {} < {}", today, semesterStart);
+
+        return getWeekForInputDate(DateUtils.FORMATTER.format(today));
+    }
+
+    /**
+     * Возвращает форматированную дату форматтером
+     *
+     * @param date
+     * @return
+     */
+    public LocalDate getFormatterDate(String date) {
+        return LocalDate.parse(date, DateUtils.FORMATTER);
+    }
+    /**
+     * Вычисляет номер учебной недели для заданной даты.
+     * Если переданная дата меньше даты начала семестра, возвращается "0". Если дата приходится на воскресенье, неделя увеличивается на 1.
+     *
+     * @param dateStr Строковое представление даты (например, "19.02.2025") в формате "dd.MM.yyyy"
+     * @return Номер учебной недели в виде строки.
+     * @throws IllegalArgumentException если переданная дата имеет неверный формат.
+     */
+    public String getWeekForDate(String dateStr) {
+        return getWeekForInputDate(dateStr);
+    }
+    /**
+     * Вычисляет номер учебной недели для заданной даты.
+     * Если переданная дата меньше даты начала семестра, возвращается "0". Если дата приходится на воскресенье, неделя увеличивается на 1.
+     *
+     * @param dateStr Строковое представление даты (например, "19.02.2025") в формате "dd.MM.yyyy"
+     * @return Номер учебной недели в виде строки.
+     * @throws IllegalArgumentException если переданная дата имеет неверный формат.
+     */
+    private String getWeekForInputDate(String dateStr) {
+        LocalDate inputDate;
+        try {
+            inputDate = LocalDate.parse(dateStr, DateUtils.FORMATTER);
+        } catch (Exception e) {
+            log.error("Ошибка парсинга даты '{}': {}", dateStr, e.getMessage());
+            throw new IllegalArgumentException("Неверный формат даты, требуется dd.MM.yyyy", e);
+        }
+
+        if (inputDate.isBefore(semesterStart)) {
+            log.info("Дата {} раньше начала семестра {}", inputDate, semesterStart);
             return "0";
         }
 
-        long daysBetween = ChronoUnit.DAYS.between(semesterStart, today);
+        long daysBetween = ChronoUnit.DAYS.between(semesterStart, inputDate);
         int weekNumber = (int) (daysBetween / 7) + 1;
-        if (today.getDayOfWeek() == DayOfWeek.SUNDAY){
+        if (inputDate.getDayOfWeek() == DayOfWeek.SUNDAY) {
             weekNumber++;
         }
-        log.info("Сегодня: {}, разница в днях: {}, текущая неделя: {}", today, daysBetween, weekNumber);
+        log.info("Для даты {}: разница в днях: {}, вычисленная неделя: {}", inputDate, daysBetween, weekNumber);
         return String.valueOf(weekNumber);
     }
 

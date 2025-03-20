@@ -8,7 +8,13 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.models.ScheduleEntity;
+import ru.semavin.telegrambot.models.enums.ExceptionMessages;
 import ru.semavin.telegrambot.models.enums.LessonType;
+import ru.semavin.telegrambot.utils.ExceptionFabric;
+import ru.semavin.telegrambot.utils.exceptions.ConnectFailedException;
+import ru.semavin.telegrambot.utils.exceptions.GroupNotFoundException;
+import ru.semavin.telegrambot.utils.exceptions.InvalidFormatDateException;
+import ru.semavin.telegrambot.utils.exceptions.ScheduleNotFoundException;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -43,7 +49,7 @@ public class ScheduleParserService {
     /**
      * Главный метод: парсит расписание за любую неделю (или текущую, если week == null).
      */
-    public List<ScheduleEntity> findScheduleByGroup(String groupName, String week) throws IOException {
+    public List<ScheduleEntity> findScheduleByGroup(String groupName, String week) {
         int actualWeek = week != null ? Integer.parseInt(week) : CURRENT_WEEK;
         log.info("Начало парсинга расписания для группы {}, неделя: {}", groupName, (actualWeek));
 
@@ -57,13 +63,19 @@ public class ScheduleParserService {
     /**
      * Получить куки для определённой группы.
      */
-    private static Map<String, String> getCookiesForGroup(String groupName) throws IOException {
+    private static Map<String, String> getCookiesForGroup(String groupName)  {
         String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupName, StandardCharsets.UTF_8);
 
-        Connection.Response response = Jsoup.connect(url)
-                .userAgent(USER_AGENT)
-                .referrer(SCHEDULE_URL)
-                .execute();
+        Connection.Response response = null;
+        try {
+            response = Jsoup.connect(url)
+                    .userAgent(USER_AGENT)
+                    .referrer(SCHEDULE_URL)
+                    .execute();
+        } catch (IOException e) {
+            log.error("Connect to {} failed", SCHEDULE_URL, e);
+            throw ExceptionFabric.create(ConnectFailedException.class, ExceptionMessages.CONNECT_FAILED);
+        }
 
         return response.cookies();
     }
@@ -71,7 +83,7 @@ public class ScheduleParserService {
     /**
      * Получить HTML-страницу с расписанием (учитываем week, если указана).
      */
-    private Document getSchedulePage(String groupName, Map<String, String> cookies, int week) throws IOException {
+    private Document getSchedulePage(String groupName, Map<String, String> cookies, int week)  {
         String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupName, StandardCharsets.UTF_8);
 
 
@@ -79,11 +91,16 @@ public class ScheduleParserService {
         url += "&week=" + URLEncoder.encode(String.valueOf(week), StandardCharsets.UTF_8);
         log.debug("Запрашиваем страницу расписания: {}", url);
 
-        return Jsoup.connect(url)
-                .userAgent(USER_AGENT)
-                .referrer(SCHEDULE_URL)
-                .cookies(cookies)
-                .get();
+        try {
+            return Jsoup.connect(url)
+                    .userAgent(USER_AGENT)
+                    .referrer(SCHEDULE_URL)
+                    .cookies(cookies)
+                    .get();
+        } catch (IOException e) {
+            log.error("Connect to {} failed", SCHEDULE_URL, e);
+            throw ExceptionFabric.create(ConnectFailedException.class, ExceptionMessages.CONNECT_FAILED);
+        }
     }
 
     /**
@@ -95,12 +112,12 @@ public class ScheduleParserService {
      * @return Список распарсенных пар
      */
     private List<ScheduleEntity> parseSchedule(Document doc, String groupName, Predicate<LocalDate> dayFilter, int week) {
-        List<ScheduleEntity> scheduleList = new ArrayList<>();
+        List<ScheduleEntity> scheduleList;
         Elements dayElements = doc.select("li.step-item");
 
         if (dayElements.isEmpty()) {
             log.warn("Для группы {} расписание не найдено.", groupName);
-            return scheduleList;
+                throw ExceptionFabric.create(ScheduleNotFoundException.class, ExceptionMessages.SCHEDULE_NOT_FOUND);
         }
 
         int currentYear = LocalDate.now().getYear();
@@ -141,7 +158,7 @@ public class ScheduleParserService {
             return parsedDate;
         } catch (Exception e) {
             log.error("Ошибка парсинга даты '{}': {}", dayPart, e.getMessage());
-            return null;
+            throw ExceptionFabric.create(InvalidFormatDateException.class, ExceptionMessages.INVALID_DATE_FORMAT);
         }
     }
 

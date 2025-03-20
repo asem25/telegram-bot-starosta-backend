@@ -34,7 +34,7 @@ public class ScheduleService {
      * Если расписания нет, загружает актуальное.
      */
     @Transactional
-    @Cacheable(value = "scheduleCache", key = "#groupName + '-' + #week")
+    @Cacheable(value = "scheduleCache", key = "#groupName + '-' + #week", unless = "#result == null or #result.isEmpty()")
     public List<ScheduleDTO> getScheduleFromDataBase(String groupName, String week) {
         String actualWeek = (week != null) ? week : semesterService.getCurrentWeek();
         int currentWeek = Integer.parseInt(actualWeek);
@@ -57,14 +57,7 @@ public class ScheduleService {
     @Transactional
     @CacheEvict(value = "scheduleCache", key = "#groupName + '-' + #week")
     public List<ScheduleDTO> getActualSchedule(String groupName, String week) {
-        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> {
-            try {
-                return scheduleParserService.findScheduleByGroup(groupName, week);
-            } catch (IOException e) {
-                log.error("Ошибка при парсинге расписания для группы {}: {}", groupName, e.getMessage(), e);
-                return new ArrayList<>();
-            }
-        });
+        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> scheduleParserService.findScheduleByGroup(groupName, week));
 
         List<ScheduleEntity> scheduleEntities = future.join();
         //Чистим, чтобы не было лишних дней
@@ -79,23 +72,28 @@ public class ScheduleService {
     }
 
     /**
-     * Получает расписание на текущий день.
-     * Если расписания нет в БД, загружает расписание за неделю и затем достаёт текущий день.
+     * Возвращает расписание за заданный день
+     * Кэширование + проверка в БД
+     * @param groupName номер группы
+     * @param date дата в виде строки
+     * @return возвращает список DTO расписаний
      */
+
     @Transactional
-    public List<ScheduleDTO> getScheduleForCurrentDay(String groupName) {
-        LocalDate today = LocalDate.now();
-        int currentWeek = Integer.parseInt(semesterService.getCurrentWeek());
+    @Cacheable(value = "scheduleDay", key ="#groupName + '-' + #date", unless = "#result == null or #result.isEmpty()")
+    public List<ScheduleDTO> getScheduleForDay(String groupName, String date) {
+        LocalDate parsingDate = semesterService.getFormatterDate(date);
+        int actualWeek = Integer.parseInt(semesterService.getWeekForDate(date));
 
         // Проверяем, есть ли расписание на текущий день
-        boolean existingSchedule = scheduleRepository.existsByLessonDateAndGroupNameIgnoreCase(today, groupName);
+        boolean existingSchedule = scheduleRepository.existsByLessonDateAndGroupNameIgnoreCase(parsingDate, groupName);
         if (!existingSchedule) {
             // Если расписания нет, загружаем неделю
-            getScheduleFromDataBase(groupName, String.valueOf(currentWeek));
+            getScheduleFromDataBase(groupName, String.valueOf(actualWeek));
         }
 
         // После загрузки недели ищем расписание на текущий день
-        List<ScheduleEntity> updatedSchedule = scheduleRepository.findAllByLessonDateAndGroupName(today, groupName);
+        List<ScheduleEntity> updatedSchedule = scheduleRepository.findAllByLessonDateAndGroupName(parsingDate, groupName);
 
         return scheduleMapper.toScheduleDTOList(updatedSchedule);
     }

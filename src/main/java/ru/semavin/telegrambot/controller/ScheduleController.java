@@ -1,35 +1,95 @@
 package ru.semavin.telegrambot.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
 import ru.semavin.telegrambot.services.schedules.ScheduleService;
+import ru.semavin.telegrambot.utils.DateUtils;
 
+import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Контроллер для получения расписания.
+ */
 @RestController
 @RequestMapping("api/v1/schedule")
 @Slf4j
 @RequiredArgsConstructor
-@Tag(name = "Schedule Controller", description = "Публичный контроллер для полуения расписания")
+@Tag(name = "Schedule Controller", description = "Публичный контроллер для получения расписания")
 public class ScheduleController {
     private final ScheduleService scheduleService;
 
+    /**
+     * Получение расписания за указанную или текущую неделю.
+     *
+     * @param groupName Название группы (обязательный параметр).
+     * @param week Номер недели (необязательный, если не указан, будет выбрана текущая неделя).
+     * @return Список пар в формате {@link ScheduleDTO}.
+     */
+    @Operation(
+            summary = "Получение расписания за неделю",
+            description = "Позволяет получить расписание для указанной группы на выбранную неделю. "
+                    + "Если неделя не указана, используется текущая неделя."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Успешное получение расписания"),
+            @ApiResponse(responseCode = "404", description = "Расписание не найдено")
+    })
     @GetMapping("/week")
-    @Operation(summary = "Получения расписания за текущую неделю/выбранную")
-    public ResponseEntity<List<ScheduleDTO>> getSchedule(@RequestParam String groupName,
-                                                         @RequestParam(required = false) String week){
+    public ResponseEntity<List<ScheduleDTO>> getSchedule(
+            @Parameter(description = "Название группы", required = true) @RequestParam String groupName,
+            @Parameter(description = "Номер недели (необязательный параметр)") @RequestParam(required = false) String week) {
         return ResponseEntity.ok(scheduleService.getScheduleFromDataBase(groupName, week));
     }
+
+    /**
+     * Получение расписания на текущий день.
+     *
+     * @param groupName Название группы.
+     * @return Список пар на текущий день.
+     */
+    @Operation(
+            summary = "Получение расписания на текущий день",
+            description = "Позволяет получить расписание для указанной группы на сегодняшний день."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Успешное получение расписания"),
+            @ApiResponse(responseCode = "404", description = "Расписание не найдено")
+    })
     @GetMapping("/currentDay")
-    @Operation(summary = "Получения расписания на текущий день")
-    public ResponseEntity<List<ScheduleDTO>> getScheduleForCurrentDay(@RequestParam String groupName){
-        return ResponseEntity.ok(scheduleService.getScheduleForCurrentDay(groupName));
+    public ResponseEntity<List<ScheduleDTO>> getScheduleForCurrentDay(
+            @Parameter(description = "Название группы", required = true) @RequestParam String groupName) {
+        LocalDate today = LocalDate.now();
+        return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, today.format(DateUtils.FORMATTER)));
+    }
+
+    /**
+     * Получение расписания на определенный день.
+     *
+     * @param groupName Название группы.
+     * @param date Дата в формате "dd.MM.yyyy".
+     * @return Список пар на заданный день.
+     */
+    @Operation(
+            summary = "Получение расписания на заданный день",
+            description = "Позволяет получить расписание для указанной группы на определенную дату."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Успешное получение расписания"),
+            @ApiResponse(responseCode = "404", description = "Расписание не найдено")
+    })
+    @GetMapping("/day")
+    public ResponseEntity<List<ScheduleDTO>> getScheduleForDay(
+            @Parameter(description = "Название группы", required = true) @RequestParam String groupName,
+            @Parameter(description = "Дата в формате 'dd.MM.yyyy'", required = true) @RequestParam String date) {
+        return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, date));
     }
 }
