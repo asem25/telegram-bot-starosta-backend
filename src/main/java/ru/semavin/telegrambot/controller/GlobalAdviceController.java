@@ -19,7 +19,7 @@ public class GlobalAdviceController {
         return ResponseEntity.status(404)
                 .body(
                         ErrorResponseDTO.builder()
-                                .error(HttpStatus.NOT_FOUND.toString())
+                                .error(String.valueOf(HttpStatus.NOT_FOUND.value()))
                                 .error_description(ex.getMessage())
                                 .build());
 
@@ -29,7 +29,7 @@ public class GlobalAdviceController {
         return ResponseEntity.status(500)
                 .body(
                         ErrorResponseDTO.builder()
-                                .error(HttpStatus.INTERNAL_SERVER_ERROR.toString())
+                                .error(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()))
                                 .error_description(ex.getMessage())
                                 .build());
 
@@ -39,7 +39,7 @@ public class GlobalAdviceController {
         return ResponseEntity.status(400)
                 .body(
                         ErrorResponseDTO.builder()
-                                .error(HttpStatus.BAD_REQUEST.toString())
+                                .error(String.valueOf(HttpStatus.BAD_REQUEST.value()))
                                 .error_description(ex.getMessage())
                                 .build());
 
@@ -49,7 +49,7 @@ public class GlobalAdviceController {
         return ResponseEntity.status(404)
                 .body(
                         ErrorResponseDTO.builder()
-                                .error(HttpStatus.NOT_FOUND.toString())
+                                .error(String.valueOf(HttpStatus.NOT_FOUND.value()))
                                 .error_description(ex.getMessage())
                                 .build());
 
@@ -58,7 +58,7 @@ public class GlobalAdviceController {
     public ResponseEntity<ErrorResponseDTO> handleConstraintViolation(ConstraintViolationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponseDTO.builder()
-                        .error(HttpStatus.NOT_FOUND.toString())
+                        .error(String.valueOf(HttpStatus.NOT_FOUND.value()))
                         .error_description(ex.getMessage())
                         .build());
     }
@@ -66,7 +66,7 @@ public class GlobalAdviceController {
     public ResponseEntity<ErrorResponseDTO> handleNoResourceFoundException(NoResourceFoundException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponseDTO.builder()
-                        .error(HttpStatus.NOT_FOUND.toString())
+                        .error(String.valueOf(HttpStatus.NOT_FOUND.value()))
                         .error_description(ex.getMessage())
                         .build());
     }
