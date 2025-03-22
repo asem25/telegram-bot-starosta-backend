@@ -13,7 +13,6 @@ import ru.semavin.telegrambot.dto.ScheduleDTO;
 import ru.semavin.telegrambot.services.schedules.ScheduleService;
 import ru.semavin.telegrambot.utils.DateUtils;
 
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -67,8 +66,7 @@ public class ScheduleController {
     @GetMapping("/currentDay")
     public ResponseEntity<List<ScheduleDTO>> getScheduleForCurrentDay(
             @Parameter(description = "Название группы", required = true) @RequestParam String groupName) {
-        LocalDate today = LocalDate.now();
-        return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, today.format(DateUtils.FORMATTER)));
+        return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, DateUtils.getTodayWithCheckSunDay()));
     }
 
     /**
@@ -91,5 +89,24 @@ public class ScheduleController {
             @Parameter(description = "Название группы", required = true) @RequestParam String groupName,
             @Parameter(description = "Дата в формате 'dd.MM.yyyy'", required = true) @RequestParam String date) {
         return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, date));
+    }
+    /**
+     * Получение расписания на завтрашний день.
+     *
+     * @param groupName Название группы.
+     * @return Список пар на заданный день.
+     */
+    @Operation(
+            summary = "Получение расписания на завтрашний день",
+            description = "Позволяет получить расписание для указанной группы на определенную дату."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Успешное получение расписания"),
+            @ApiResponse(responseCode = "404", description = "Расписание не найдено")
+    })
+    @GetMapping("/tomorrow")
+    public ResponseEntity<List<ScheduleDTO>> getScheduleForTomorrow(
+            @Parameter(description = "Название группы", required = true) @RequestParam String groupName) {
+        return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, DateUtils.getTomorrowWithCheckSunDay()));
     }
 }
