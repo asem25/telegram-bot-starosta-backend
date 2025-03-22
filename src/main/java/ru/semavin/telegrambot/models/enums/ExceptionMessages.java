@@ -12,6 +12,10 @@ public enum ExceptionMessages {
     INVALID_DATE_FORMAT("Неверный формат даты. Ожидаемый формат: dd.MM.yyyy."),
     CONNECT_FAILED("Ошибка во время подключния"),
     SCHEDULE_NOT_FOUND("Расписания нет! Либо все закончилось, либо не началось..."),
+    USER_NOT_FOUND("Человека не найдено!"),
+    KEY_NOT_VALID("Ключ не совпадает"),
+    USER_ALREADY_EXISTS_FOR_STAROSTA("Пользователь уже является старостой!"),
+    USER_TELEGRAM_ID_EXISTS("Пользователь с таким Telegram_id уже есть!"),
     UNKNOWN_ERROR("Произошла неизвестная ошибка.");
 
     private final String message;

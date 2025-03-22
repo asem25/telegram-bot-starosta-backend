@@ -7,6 +7,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
+import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.models.enums.ExceptionMessages;
 import ru.semavin.telegrambot.models.enums.LessonType;
@@ -49,22 +50,22 @@ public class ScheduleParserService {
     /**
      * Главный метод: парсит расписание за любую неделю (или текущую, если week == null).
      */
-    public List<ScheduleEntity> findScheduleByGroup(String groupName, String week) {
+    public List<ScheduleEntity> findScheduleByGroup(GroupEntity groupEntity, String week) {
         int actualWeek = week != null ? Integer.parseInt(week) : CURRENT_WEEK;
-        log.info("Начало парсинга расписания для группы {}, неделя: {}", groupName, (actualWeek));
+        log.info("Начало парсинга расписания для группы {}, неделя: {}", groupEntity.getGroupName(), (actualWeek));
 
-        Map<String, String> cookies = getCookiesForGroup(groupName);
-        Document schedulePage = getSchedulePage(groupName, cookies, actualWeek);
+        Map<String, String> cookies = getCookiesForGroup(groupEntity);
+        Document schedulePage = getSchedulePage(groupEntity, cookies, actualWeek);
 
         // Парсим все дни (фильтр – любой день)
-        return parseSchedule(schedulePage, groupName, date -> true, actualWeek);
+        return parseSchedule(schedulePage, groupEntity, date -> true, actualWeek);
     }
 
     /**
      * Получить куки для определённой группы.
      */
-    private static Map<String, String> getCookiesForGroup(String groupName)  {
-        String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupName, StandardCharsets.UTF_8);
+    private static Map<String, String> getCookiesForGroup(GroupEntity groupEntity)  {
+        String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupEntity.getGroupName(), StandardCharsets.UTF_8);
 
         Connection.Response response = null;
         try {
@@ -83,8 +84,8 @@ public class ScheduleParserService {
     /**
      * Получить HTML-страницу с расписанием (учитываем week, если указана).
      */
-    private Document getSchedulePage(String groupName, Map<String, String> cookies, int week)  {
-        String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupName, StandardCharsets.UTF_8);
+    private Document getSchedulePage(GroupEntity groupEntity, Map<String, String> cookies, int week)  {
+        String url = SCHEDULE_URL + GROUP_URL + URLEncoder.encode(groupEntity.getGroupName(), StandardCharsets.UTF_8);
 
 
 
@@ -107,16 +108,16 @@ public class ScheduleParserService {
      * Универсальный метод парсинга: берёт все дни, фильтрует их и парсит пары.
      *
      * @param doc       HTML-документ расписания
-     * @param groupName Имя группы
+     * @param groupEntity Имя группы
      * @param dayFilter Условие, по которому отбираются дни (например, "только сегодня")
      * @return Список распарсенных пар
      */
-    private List<ScheduleEntity> parseSchedule(Document doc, String groupName, Predicate<LocalDate> dayFilter, int week) {
+    private List<ScheduleEntity> parseSchedule(Document doc, GroupEntity groupEntity, Predicate<LocalDate> dayFilter, int week) {
         List<ScheduleEntity> scheduleList;
         Elements dayElements = doc.select("li.step-item");
 
         if (dayElements.isEmpty()) {
-            log.warn("Для группы {} расписание не найдено.", groupName);
+            log.warn("Для группы {} расписание не найдено.", groupEntity.getGroupName());
                 throw ExceptionFabric.create(ScheduleNotFoundException.class, ExceptionMessages.SCHEDULE_NOT_FOUND);
         }
 
@@ -130,12 +131,12 @@ public class ScheduleParserService {
                     if (lessonDate == null || !dayFilter.test(lessonDate)) {
                         return Collections.<ScheduleEntity>emptyList();
                     }
-                    return parseLessonsForDay(dayElement, groupName, lessonDate, week);
+                    return parseLessonsForDay(dayElement, groupEntity, lessonDate, week);
                 })
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
 
-        log.info("Найдено {} пар(ы) для группы {}", scheduleList.size(), groupName);
+        log.info("Найдено {} пар(ы) для группы {}", scheduleList.size(), groupEntity.getGroupName());
         return scheduleList;
     }
 
@@ -165,12 +166,12 @@ public class ScheduleParserService {
     /**
      * Парсит все пары для конкретного дня.
      */
-    private List<ScheduleEntity> parseLessonsForDay(Element dayElement, String groupName, LocalDate lessonDate, int week) {
+    private List<ScheduleEntity> parseLessonsForDay(Element dayElement, GroupEntity groupEntity, LocalDate lessonDate, int week) {
         List<ScheduleEntity> lessons = new ArrayList<>();
         Elements lessonElements = dayElement.select("div.mb-4");
 
         for (Element lessonElement : lessonElements) {
-            ScheduleEntity entity = parseLesson(lessonElement, groupName, lessonDate, week);
+            ScheduleEntity entity = parseLesson(lessonElement, groupEntity, lessonDate, week);
             if (entity != null) {
                 lessons.add(entity);
             }
@@ -181,7 +182,7 @@ public class ScheduleParserService {
     /**
      * Парсит одну пару: предмет, тип, время, преподавателя, аудиторию.
      */
-    private ScheduleEntity parseLesson(Element lessonElement, String groupName, LocalDate lessonDate, int week) {
+    private ScheduleEntity parseLesson(Element lessonElement, GroupEntity groupEntity, LocalDate lessonDate, int week) {
         Element subjectElement = lessonElement.selectFirst("p.mb-2.fw-semi-bold.text-dark");
         if (subjectElement == null) {
             log.warn("Не найден элемент с названием предмета.");
@@ -226,7 +227,7 @@ public class ScheduleParserService {
         LocalTime endTime = LocalTime.parse(times[1].trim(), TIME_FORMATTER);
 
         ScheduleEntity entity = ScheduleEntity.builder()
-                .groupName(groupName)
+                .group(groupEntity)
                 .subjectName(subjectName)
                 .lessonType(lessonType)
                 .lessonWeek(week)

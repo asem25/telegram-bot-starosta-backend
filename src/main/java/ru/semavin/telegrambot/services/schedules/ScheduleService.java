@@ -8,8 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
 import ru.semavin.telegrambot.mapper.ScheduleMapper;
+import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.repositories.ScheduleRepository;
+import ru.semavin.telegrambot.services.GroupService;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -28,6 +30,7 @@ public class ScheduleService {
     private final ScheduleParserService scheduleParserService;
     private final ScheduleMapper scheduleMapper;
     private final SemesterService semesterService;
+    private final GroupService groupService;
 
     /**
      * Получает расписание для указанной группы и недели из БД.
@@ -39,8 +42,10 @@ public class ScheduleService {
         String actualWeek = (week != null) ? week : semesterService.getCurrentWeek();
         int currentWeek = Integer.parseInt(actualWeek);
 
+        GroupEntity group = groupService.findEntityByName(groupName);
+
         // Загружаем расписание из БД
-        List<ScheduleEntity> existingSchedule = scheduleRepository.findAllByGroupNameIgnoreCaseAndLessonWeek(groupName, currentWeek);
+        List<ScheduleEntity> existingSchedule = scheduleRepository.findAllByGroupAndLessonWeek(group, currentWeek);
 
         // Если расписание уже есть – возвращаем
         if (!existingSchedule.isEmpty()) {
@@ -57,12 +62,15 @@ public class ScheduleService {
     @Transactional
     @CacheEvict(value = "scheduleCache", key = "#groupName + '-' + #week")
     public List<ScheduleDTO> getActualSchedule(String groupName, String week) {
-        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> scheduleParserService.findScheduleByGroup(groupName, week));
+        GroupEntity group = groupService.findEntityByName(groupName);
+        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> scheduleParserService.findScheduleByGroup(group, week));
 
         List<ScheduleEntity> scheduleEntities = future.join();
         //Чистим, чтобы не было лишних дней
         int currentWeek = Integer.parseInt(week);
-        scheduleRepository.deleteAllByGroupNameIgnoreCaseAndLessonWeek(groupName, currentWeek);
+
+
+        scheduleRepository.deleteAllByGroupAndLessonWeek(group, currentWeek);
 
         log.info("Найдено на маёвском сайте: {}", scheduleEntities);
         // Сохраняем новые записи
@@ -85,15 +93,17 @@ public class ScheduleService {
         LocalDate parsingDate = semesterService.getFormatterDate(date);
         int actualWeek = Integer.parseInt(semesterService.getWeekForDate(date));
 
+        GroupEntity group = groupService.findEntityByName(groupName);
+
         // Проверяем, есть ли расписание на текущий день
-        boolean existingSchedule = scheduleRepository.existsByLessonDateAndGroupNameIgnoreCase(parsingDate, groupName);
+        boolean existingSchedule = scheduleRepository.existsByLessonDateAndGroup(parsingDate, group);
         if (!existingSchedule) {
             // Если расписания нет, загружаем неделю
             getScheduleFromDataBase(groupName, String.valueOf(actualWeek));
         }
 
         // После загрузки недели ищем расписание на текущий день
-        List<ScheduleEntity> updatedSchedule = scheduleRepository.findAllByLessonDateAndGroupName(parsingDate, groupName);
+        List<ScheduleEntity> updatedSchedule = scheduleRepository.findAllByLessonDateAndGroup(parsingDate, group);
 
         return scheduleMapper.toScheduleDTOList(updatedSchedule);
     }

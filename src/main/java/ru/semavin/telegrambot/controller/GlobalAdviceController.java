@@ -1,16 +1,18 @@
 package ru.semavin.telegrambot.controller;
 
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import ru.semavin.telegrambot.dto.ErrorResponseDTO;
-import ru.semavin.telegrambot.utils.exceptions.ConnectFailedException;
-import ru.semavin.telegrambot.utils.exceptions.GroupNotFoundException;
-import ru.semavin.telegrambot.utils.exceptions.InvalidFormatDateException;
-import ru.semavin.telegrambot.utils.exceptions.ScheduleNotFoundException;
+import ru.semavin.telegrambot.utils.exceptions.*;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class GlobalAdviceController {
@@ -54,12 +56,18 @@ public class GlobalAdviceController {
                                 .build());
 
     }
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponseDTO> handleConstraintViolation(ConstraintViolationException ex) {
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponseDTO> handleConstraintViolation(MethodArgumentNotValidException ex) {
+        Set<String> fieldErrors = ex.getFieldErrors().stream()
+                .map(error -> String.format("Поле %s:%s", error.getField(), error.getDefaultMessage()))
+                .collect(Collectors.toSet());
+
+
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponseDTO.builder()
-                        .error(String.valueOf(HttpStatus.NOT_FOUND.value()))
-                        .error_description(ex.getMessage())
+                        .error(String.valueOf(HttpStatus.BAD_REQUEST.value()))
+                        .error_description(fieldErrors.toString())
                         .build());
     }
     @ExceptionHandler(NoResourceFoundException.class)
@@ -67,6 +75,30 @@ public class GlobalAdviceController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponseDTO.builder()
                         .error(String.valueOf(HttpStatus.NOT_FOUND.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+    @ExceptionHandler(KeyNotEqualsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleKeyNotEqualsException(KeyNotEqualsException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.FORBIDDEN.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+    @ExceptionHandler(UserAlreadyExistsForStarostaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserAlreadyExistsForStarostaException(UserAlreadyExistsForStarostaException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.BAD_REQUEST.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+    @ExceptionHandler(UserWithTelegramIdAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserWithTelegramIdAlreadyExistsException(UserWithTelegramIdAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.BAD_REQUEST.value()))
                         .error_description(ex.getMessage())
                         .build());
     }

@@ -7,6 +7,10 @@ import ru.semavin.telegrambot.models.enums.LessonType;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+/**
+ * Сущность расписания (schedule).
+ * Хранит информацию о парах: предмет, тип, время, преподаватель и т.д.
+ */
 @Entity
 @Table(name = "schedule")
 @Data
@@ -19,30 +23,36 @@ public class ScheduleEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name="group_name")
-    private String groupName;
+    /**
+     * Ссылка на группу, к которой относится данное расписание.
+     * В таблице schedule это столбец group_id → groups.id
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", referencedColumnName = "id")
+    private GroupEntity group;
 
-    @Column(name="subject_name")
+    @Column(name = "subject_name")
     private String subjectName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name="lesson_type")
-    private LessonType lessonType;  // ЛК, ПЗ, ЛР
+    @Column(name = "lesson_type")
+    private LessonType lessonType;  // ЛК, ПЗ, ЛР (Lecture, Practical, Lab)
 
-    @Column(name="teacher_name")
+    @Column(name = "teacher_name")
     private String teacherName;
 
-    @Column(name="classroom")
+    @Column(name = "classroom")
     private String classroom;
 
-    @Column(name="lesson_date")
+    @Column(name = "lesson_date")
     private LocalDate lessonDate;
 
-    @Column(name="start_time")
+    @Column(name = "start_time")
     private LocalTime startTime;
 
-    @Column(name="end_time")
+    @Column(name = "end_time")
     private LocalTime endTime;
-    @Column(name="lesson_week")
+
+    @Column(name = "lesson_week")
     private Integer lessonWeek;
 }
