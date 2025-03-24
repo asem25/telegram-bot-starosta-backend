@@ -37,7 +37,6 @@ public class UserController {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Пользователь успешно добавлен"),
                     @ApiResponse(responseCode = "400", description = "Некорректные данные при валидации"),
-                    @ApiResponse(responseCode = "401", description = "Неверный API-KEY"),
                     @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
             }
     )
@@ -64,7 +63,6 @@ public class UserController {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Пользователь успешно обновлён"),
                     @ApiResponse(responseCode = "400", description = "Некорректные данные при валидации"),
-                    @ApiResponse(responseCode = "401", description = "Неверный API-KEY"),
                     @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
                     @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
             }
@@ -82,5 +80,17 @@ public class UserController {
         String userNameSaveUser = userService.update(user);
         log.info("User updated: {}", userNameSaveUser);
         return ResponseEntity.ok(userNameSaveUser);
+    }
+    @GetMapping
+    public ResponseEntity<UserDTO> getUserByTelegram(@RequestParam String telegramTag,
+                                                    @RequestHeader("API-KEY") String key){
+        if (!keyApi.equals(key)) {
+            log.warn("API key in header not equals");
+            throw ExceptionFabric.create(KeyNotEqualsException.class, ExceptionMessages.KEY_NOT_VALID);
+        }
+        log.info("Getting user by telegram tag: {}", telegramTag);
+        UserDTO userDTO = userService.getUserEntity(telegramTag);
+        log.info("User found: {}", userDTO);
+        return ResponseEntity.ok(userDTO);
     }
 }

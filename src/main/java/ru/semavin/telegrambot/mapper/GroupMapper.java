@@ -1,6 +1,5 @@
 package ru.semavin.telegrambot.mapper;
 
-import jakarta.validation.constraints.Max;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import ru.semavin.telegrambot.dto.GroupDTO;

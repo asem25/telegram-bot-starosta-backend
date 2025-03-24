@@ -58,7 +58,8 @@ public class UserService {
                 newGroupName = %s
                 """, userAfterSave.getUsername(), userAfterSave.getGroup().getGroupName());
     }
-    public UserEntity getUserEntity(String username){
-        return userRepository.findByUsername(username).orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND));
+    public UserDTO getUserEntity(String username){
+        return userMapper.userToUserDTO(userRepository.findByUsername(username).orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)));
     }
+
 }
