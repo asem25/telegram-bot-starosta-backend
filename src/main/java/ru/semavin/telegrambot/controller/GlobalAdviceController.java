@@ -100,4 +100,12 @@ public class GlobalAdviceController {
                         .error_description(ex.getMessage())
                         .build());
     }
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserNotFoundException(UserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.NOT_FOUND.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
 }
