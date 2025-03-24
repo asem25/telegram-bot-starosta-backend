@@ -81,7 +81,7 @@ public class UserController {
         log.info("User updated: {}", userNameSaveUser);
         return ResponseEntity.ok(userNameSaveUser);
     }
-    @GetMapping
+    @GetMapping("")
     public ResponseEntity<UserDTO> getUserByTelegram(@RequestParam String telegramTag,
                                                     @RequestHeader("API-KEY") String key){
         if (!keyApi.equals(key)) {
