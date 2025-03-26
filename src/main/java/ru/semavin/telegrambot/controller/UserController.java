@@ -82,6 +82,17 @@ public class UserController {
         return ResponseEntity.ok(userNameSaveUser);
     }
     @GetMapping("")
+    @Operation(
+            summary = "Получения пользователя",
+            description = "Получает пользователя.",
+            security = @SecurityRequirement(name = "API-KEY"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Пользователь найден"),
+                    @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
+                    @ApiResponse(responseCode = "403", description = "API-KEY невалиден"),
+                    @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+            }
+    )
     public ResponseEntity<UserDTO> getUserByTelegram(@RequestParam String telegramTag,
                                                     @RequestHeader("API-KEY") String key){
         if (!keyApi.equals(key)) {
