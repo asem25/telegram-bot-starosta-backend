@@ -9,6 +9,7 @@ import ru.semavin.telegrambot.mapper.UserMapper;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.UserEntity;
 import ru.semavin.telegrambot.models.enums.ExceptionMessages;
+import ru.semavin.telegrambot.models.enums.UserRole;
 import ru.semavin.telegrambot.repositories.UserRepository;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
 import ru.semavin.telegrambot.utils.exceptions.UserNotFoundException;
@@ -50,6 +51,8 @@ public class UserService {
         GroupEntity group = groupService.findEntityByName(user.getGroupName());
 
         userBeforeSave.setUsername(user.getUsername());
+        userBeforeSave.setFirstName(user.getFirstName());
+        userBeforeSave.setLastName(user.getLastName());
         userBeforeSave.setGroup(group);
 
         UserEntity userAfterSave = userRepository.save(userBeforeSave);
