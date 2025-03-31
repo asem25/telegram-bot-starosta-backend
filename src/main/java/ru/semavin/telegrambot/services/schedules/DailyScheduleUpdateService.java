@@ -12,7 +12,7 @@ import java.util.List;
  * Сервис для ежедневного обновления расписания.
  *
  * <p>Метод {@link #updateDailySchedules()} запускается по расписанию (ежедневно в 20:00 вечера) и для каждого заданного имени группы
- * получает актуальное расписание с сайта. При этом используется метод {@link ScheduleService#getActualSchedule(String, String)},
+ * получает актуальное расписание с сайта. При этом используется метод {@link ScheduleService#getActualSchedule(String)},
  * который отвечает за очистку старых записей и сохранение новых в транзакционном контексте.</p>
  */
 @Service
@@ -27,8 +27,7 @@ public class DailyScheduleUpdateService {
      * Метод, запускаемый ежедневно в 20:00 вечера.
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
      */
-    @Scheduled(cron = "0 0 20 * * *")
-
+    @Scheduled(cron = "0 0 1 1/3 * *")
     public void updateDailySchedules() {
         log.info("Начало ежедневного обновления расписания.");
         String currentWeek = semesterService.getCurrentWeek();
@@ -37,7 +36,7 @@ public class DailyScheduleUpdateService {
         for (String group : groups) {
             try {
                 log.info("Обновление расписания для группы {} на неделю {}", group, currentWeek);
-                scheduleService.getActualSchedule(group, currentWeek);
+                scheduleService.getActualSchedule(group);
             } catch (Exception e) {
                 log.error("Ошибка обновления расписания для группы {}: {}", group, e.getMessage(), e);
             }

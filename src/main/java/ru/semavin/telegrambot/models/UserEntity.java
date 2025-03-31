@@ -4,8 +4,11 @@ import jakarta.persistence.*;
 import lombok.*;
 import ru.semavin.telegrambot.models.enums.UserRole;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
- * Сущность, описывающая пользователя системы (студента, старосту и т.д.).
+ * Сущность, описывающая пользователя системы (студента, старосту, преподавателя и т.д.).
  */
 @Entity
 @Table(name = "users")
@@ -13,7 +16,6 @@ import ru.semavin.telegrambot.models.enums.UserRole;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-
 public class UserEntity {
 
     /**
@@ -35,27 +37,52 @@ public class UserEntity {
     @Column(name = "username")
     private String username;
     /**
-     * Имя пользователя
+     * Отчество пользователя
+     */
+    @Column(name = "patronymic")
+    private String patronymic;
+    /**
+     * Имя пользователя.
      */
     @Column(name = "first_name")
     private String firstName;
+
     /**
-     * Фамилия пользователя
+     * Фамилия пользователя.
      */
     @Column(name = "last_name")
     private String lastName;
+
     /**
-     * Роль пользователя в системе (например, STUDENT, STAROSTA, ADMIN).
+     * Роль пользователя в системе (например, STUDENT, STAROSTA, ADMIN, TEACHER).
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
     private UserRole role;
 
     /**
-     * Ссылка на группу, к которой принадлежит пользователь.
-     * В БД это поле users.group_id → groups.id.
+     * Ссылка на группу, к которой принадлежит пользователь (для студентов).
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", referencedColumnName = "id", nullable = true)
     private GroupEntity group;
+
+    /**
+     * Уникальный идентификатор преподавателя (teacher UUID) из парсинга расписания.
+     * Заполняется только для пользователей с ролью TEACHER.
+     */
+    @Column(name = "teacher_uuid", unique = true)
+    private String teacherUuid;
+
+    /**
+     * Список групп, в которых преподаёт данный пользователь (при роли TEACHER).
+     */
+    @ManyToMany
+    @JoinTable(
+            name = "teacher_groups",
+            joinColumns = @JoinColumn(name = "teacher_id"),
+            inverseJoinColumns = @JoinColumn(name = "group_id")
+    )
+    @Builder.Default
+    private Set<GroupEntity> teachingGroups = new HashSet<>();
 }

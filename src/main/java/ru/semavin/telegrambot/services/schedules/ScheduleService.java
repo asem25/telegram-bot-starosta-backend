@@ -53,24 +53,21 @@ public class ScheduleService {
         }
 
         // Если расписание отсутствует – загружаем и сохраняем
-        return getActualSchedule(groupName, actualWeek);
+        return getActualSchedule(groupName);
     }
 
     /**
      * Получает актуальное расписание для указанной группы и недели, парсит сайт и сохраняет в БД.
      */
     @Transactional
-    @CacheEvict(value = "scheduleCache", key = "#groupName + '-' + #week")
-    public List<ScheduleDTO> getActualSchedule(String groupName, String week) {
+    @CacheEvict(value = "scheduleCache", key = "#groupName")
+    public List<ScheduleDTO> getActualSchedule(String groupName) {
         GroupEntity group = groupService.findEntityByName(groupName);
-        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> scheduleParserService.findScheduleByGroup(group, week));
+        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> scheduleParserService.findScheduleByGroup(group));
 
         List<ScheduleEntity> scheduleEntities = future.join();
-        //Чистим, чтобы не было лишних дней
-        int currentWeek = Integer.parseInt(week);
 
-
-        scheduleRepository.deleteAllByGroupAndLessonWeek(group, currentWeek);
+        scheduleRepository.deleteAllByGroup(group);
 
         log.info("Найдено на маёвском сайте: {}", scheduleEntities);
         // Сохраняем новые записи

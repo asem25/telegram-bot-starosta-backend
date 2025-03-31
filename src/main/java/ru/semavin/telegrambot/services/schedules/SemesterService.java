@@ -95,4 +95,7 @@ public class SemesterService {
         return String.valueOf(weekNumber);
     }
 
+    public LocalDate getStartSemester() {
+        return semesterStart;
+    }
 }

@@ -24,6 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Schedule Controller", description = "Публичный контроллер для получения расписания")
 public class ScheduleController {
+    //TODO GET /month GET /semestr (teacher)
     private final ScheduleService scheduleService;
 
     /**

@@ -15,10 +15,10 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
 
     List<ScheduleEntity> findAllByLessonDateAndGroup(LocalDate lessonDate, GroupEntity group);
     /**
-     * Удаляет все записи расписания для указанной группы и недели.
+     * Удаляет все записи расписания для указанной группы
      *
-     * @param group название группы
-     * @param lessonWeek неделя расписания, которую нужно удалить
+     * @param group название групп
      */
-    void deleteAllByGroupAndLessonWeek(GroupEntity group, Integer lessonWeek);
+
+    void deleteAllByGroup(GroupEntity group);
 }

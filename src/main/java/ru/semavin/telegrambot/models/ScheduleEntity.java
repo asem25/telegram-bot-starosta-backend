@@ -25,7 +25,6 @@ public class ScheduleEntity {
 
     /**
      * Ссылка на группу, к которой относится данное расписание.
-     * В таблице schedule это столбец group_id → groups.id
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", referencedColumnName = "id")
@@ -38,8 +37,13 @@ public class ScheduleEntity {
     @Column(name = "lesson_type")
     private LessonType lessonType;  // ЛК, ПЗ, ЛР (Lecture, Practical, Lab)
 
-    @Column(name = "teacher_name")
-    private String teacherName;
+    /**
+     * Ссылка на преподавателя (UserEntity с ролью TEACHER).
+     * Для старых записей ранее использовавшихся поле teacher_name, потребуется миграция.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "teacher_id", referencedColumnName = "id")
+    private UserEntity teacher;
 
     @Column(name = "classroom")
     private String classroom;
