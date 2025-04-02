@@ -50,7 +50,7 @@ public class DailyScheduleUpdateService {
      *
      * @return список названий групп
      */
-    private List<String> getAllGroups() {
+    private static List<String> getAllGroups() {
         //TODO в большом приложение возможно, что будет очень много групп, нужно удалять неактуальные
         return Arrays.asList("М3О-303С-22");
     }

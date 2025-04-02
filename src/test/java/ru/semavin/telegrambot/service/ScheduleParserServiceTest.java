@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -14,7 +15,7 @@ import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.models.UserEntity;
 import ru.semavin.telegrambot.models.enums.LessonType;
 import ru.semavin.telegrambot.models.enums.UserRole;
-import ru.semavin.telegrambot.services.GroupService;
+import ru.semavin.telegrambot.services.groups.GroupService;
 import ru.semavin.telegrambot.services.UserService;
 import ru.semavin.telegrambot.services.schedules.ScheduleParserService;
 import ru.semavin.telegrambot.services.schedules.SemesterService;
@@ -38,8 +39,7 @@ public class ScheduleParserServiceTest {
     private RestTemplate restTemplate;
 
     @Mock
-    private GroupService groupService; // если понадобится
-
+    private ObjectMapper mapper;
     // Используем реальный SemesterService с датой начала семестра
     private SemesterService semesterService = new SemesterService("01.09.2024");
     private SemesterService semesterServiceLater = new SemesterService("10.10.2024");
@@ -47,8 +47,9 @@ public class ScheduleParserServiceTest {
     private UserEntity teacherEmpty;
     private GroupEntity groupEntity;
 
-
+    @InjectMocks
     private ScheduleParserService scheduleParserService;
+    @InjectMocks
     private ScheduleParserService scheduleParserServiceWithSemesterStartAfterLessons;
     private String fakeJson;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -100,8 +101,8 @@ public class ScheduleParserServiceTest {
                   }
                 }
                 """;
-        scheduleParserService = new ScheduleParserService(semesterService, teacherService, groupService);
-        scheduleParserServiceWithSemesterStartAfterLessons = new ScheduleParserService(semesterServiceLater, teacherService, groupService);
+        scheduleParserService = new ScheduleParserService(semesterService, teacherService, restTemplate, mapper);
+        scheduleParserServiceWithSemesterStartAfterLessons = new ScheduleParserService(semesterServiceLater, teacherService, restTemplate, mapper);
         // Заменяем restTemplate внутри ScheduleParserService на наш мок
         ReflectionTestUtils.setField(scheduleParserService, "restTemplate", restTemplate);
         ReflectionTestUtils.setField(scheduleParserServiceWithSemesterStartAfterLessons, "restTemplate", restTemplate);
@@ -125,9 +126,10 @@ public class ScheduleParserServiceTest {
 
     @Test
     void testParseJsonScheduleWithEmptyLector() throws Exception {
-
+        when(mapper.readTree(anyString())).thenReturn(new ObjectMapper().readTree(fakeJson));
         // Мокаем вызов restTemplate.getForObject() для любого URL, чтобы возвращать fakeJson
-        when(restTemplate.getForObject(anyString(), eq(String.class))).thenReturn(fakeJson);
+        when(restTemplate.getForObject(anyString(), eq(String.class)))
+                .thenReturn(fakeJson);
 
         // Stub для teacherService: для пустого лектора возвращаем преподавателя с именем "Не указан"
         UserEntity teacherEmpty = new UserEntity();
@@ -162,7 +164,9 @@ public class ScheduleParserServiceTest {
 
     @Test
     void testParseJsonScheduleWithNonEmptyLector() throws Exception {
-        when(restTemplate.getForObject(anyString(), eq(String.class))).thenReturn(fakeJson);
+        when(mapper.readTree(anyString())).thenReturn(new ObjectMapper().readTree(fakeJson));
+        when(restTemplate.getForObject(anyString(), eq(String.class)))
+                .thenReturn(fakeJson);
 
 
         when(teacherService.findOrCreateTeacherAndAddGroup("00000000-0000-0000-0000-000000000000", "", groupEntity))
@@ -195,6 +199,7 @@ public class ScheduleParserServiceTest {
 
     @Test
     void testParseJsonScheduleWhenSemesterStartBeforeDateLesson() throws Exception {
+        when(mapper.readTree(anyString())).thenReturn(new ObjectMapper().readTree(fakeJson));
         when(restTemplate.getForObject(anyString(), eq(String.class))).thenReturn(fakeJson);
 
         List<ScheduleEntity> result = scheduleParserServiceWithSemesterStartAfterLessons.findScheduleByGroup(groupEntity);

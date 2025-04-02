@@ -1,6 +1,5 @@
 package ru.semavin.telegrambot.service;
 
-import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,7 +11,7 @@ import ru.semavin.telegrambot.mapper.ScheduleMapper;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.repositories.ScheduleRepository;
-import ru.semavin.telegrambot.services.GroupService;
+import ru.semavin.telegrambot.services.groups.GroupService;
 import ru.semavin.telegrambot.services.schedules.ScheduleParserService;
 import ru.semavin.telegrambot.services.schedules.ScheduleService;
 import ru.semavin.telegrambot.services.schedules.SemesterService;

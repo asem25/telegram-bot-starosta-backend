@@ -12,6 +12,7 @@ import ru.semavin.telegrambot.models.UserEntity;
 import ru.semavin.telegrambot.models.enums.ExceptionMessages;
 import ru.semavin.telegrambot.models.enums.UserRole;
 import ru.semavin.telegrambot.repositories.UserRepository;
+import ru.semavin.telegrambot.services.groups.GroupService;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
 import ru.semavin.telegrambot.utils.exceptions.UserNotFoundException;
 import ru.semavin.telegrambot.utils.exceptions.UserWithTelegramIdAlreadyExistsException;
@@ -42,6 +43,7 @@ public class UserService {
             // Если DTO groupName == null, значит пользователь без группы
             userEntity.setGroup(null);
         }
+        userEntity.setRole(UserRole.STUDENT);
         UserEntity saved = userRepository.save(userEntity);
         log.info("User saved: {}", saved);
         return saved.getUsername();
@@ -49,10 +51,18 @@ public class UserService {
 
     @Transactional
     public String update(UserDTO user) {
-        return null;
+        UserEntity userEntity = userRepository.findByUsername(user.getUsername())
+                .orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND));
+
+        userEntity.setFirstName(user.getFirstName());
+        userEntity.setLastName(user.getLastName());
+        userEntity.setGroup(groupService.findEntityByName(user.getGroupName()));
+
+        return userRepository.save(userEntity).getUsername();
     }
     public UserDTO getUserEntity(String username){
-        return userMapper.userToUserDTO(userRepository.findByUsername(username).orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)));
+        return userMapper.userToUserDTO(userRepository.findByUsername(username)
+                .orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)));
     }
 
     @Transactional
@@ -64,6 +74,8 @@ public class UserService {
                             .teacherUuid(teacherUuid)
                             .role(UserRole.TEACHER)
                             .firstName("Не указан")
+                            .lastName("")
+                            .patronymic("")
                             .build()
             ));
         }

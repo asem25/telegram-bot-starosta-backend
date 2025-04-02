@@ -50,11 +50,11 @@ public class GroupEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GroupEntity group = (GroupEntity) o;
-        return Objects.equals(id, group.id) && Objects.equals(groupName, group.groupName) && Objects.equals(starosta, group.starosta);
+        return Objects.equals(groupName, group.groupName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, groupName, starosta);
+        return Objects.hash(groupName);
     }
 }

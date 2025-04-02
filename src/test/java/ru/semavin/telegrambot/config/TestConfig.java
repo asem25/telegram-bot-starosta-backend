@@ -3,10 +3,9 @@ package ru.semavin.telegrambot.config;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import ru.semavin.telegrambot.mapper.ScheduleMapper;
 import ru.semavin.telegrambot.repositories.ScheduleRepository;
-import ru.semavin.telegrambot.services.GroupService;
+import ru.semavin.telegrambot.services.groups.GroupService;
 import ru.semavin.telegrambot.services.schedules.ScheduleParserService;
 import ru.semavin.telegrambot.services.schedules.SemesterService;
 

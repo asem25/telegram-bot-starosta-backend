@@ -1,5 +1,6 @@
 package ru.semavin.telegrambot.services.schedules;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -11,11 +12,9 @@ import ru.semavin.telegrambot.mapper.ScheduleMapper;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.repositories.ScheduleRepository;
-import ru.semavin.telegrambot.services.GroupService;
+import ru.semavin.telegrambot.services.groups.GroupService;
 
-import java.io.IOException;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -32,6 +31,10 @@ public class ScheduleService {
     private final SemesterService semesterService;
     private final GroupService groupService;
 
+    @PostConstruct
+    public void init() {
+
+    }
     /**
      * Получает расписание для указанной группы и недели из БД.
      * Если расписания нет, загружает актуальное.

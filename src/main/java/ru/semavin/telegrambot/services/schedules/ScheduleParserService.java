@@ -2,6 +2,7 @@ package ru.semavin.telegrambot.services.schedules;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
@@ -10,7 +11,6 @@ import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.models.UserEntity;
 import ru.semavin.telegrambot.models.enums.LessonType;
-import ru.semavin.telegrambot.services.GroupService;
 import ru.semavin.telegrambot.services.UserService;
 import ru.semavin.telegrambot.utils.DateUtils;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
@@ -30,6 +30,7 @@ import java.util.HashMap;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ScheduleParserService {
 
     // Формат для времени, как в JSON ("9:00:00")
@@ -41,12 +42,6 @@ public class ScheduleParserService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public ScheduleParserService(SemesterService semesterService, UserService teacherService, GroupService groupService) {
-        this.semesterService = semesterService;
-        this.teacherService = teacherService;
-        this.restTemplate = new RestTemplate();
-        this.objectMapper = new ObjectMapper();
-    }
 
     public List<ScheduleEntity> findScheduleByGroup(GroupEntity groupEntity) {
         String jsonString = getJsonOfScheduleStudentWithGroupName(groupEntity.getGroupName());

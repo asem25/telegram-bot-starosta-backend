@@ -1,23 +1,27 @@
-package ru.semavin.telegrambot.services;
+package ru.semavin.telegrambot.services.groups;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.dto.GroupDTO;
+import ru.semavin.telegrambot.dto.UserDTO;
 import ru.semavin.telegrambot.mapper.GroupMapper;
+import ru.semavin.telegrambot.mapper.UserMapper;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.UserEntity;
 import ru.semavin.telegrambot.models.enums.ExceptionMessages;
+import ru.semavin.telegrambot.models.enums.UserRole;
 import ru.semavin.telegrambot.repositories.GroupRepository;
 import ru.semavin.telegrambot.repositories.UserRepository;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
 import ru.semavin.telegrambot.utils.exceptions.GroupNotFoundException;
 import ru.semavin.telegrambot.utils.exceptions.UserAlreadyExistsForStarostaException;
+import ru.semavin.telegrambot.utils.exceptions.UserAlreadyNotExistsForStarostaException;
 import ru.semavin.telegrambot.utils.exceptions.UserNotFoundException;
 
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -26,6 +30,18 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final GroupMapper groupMapper;
     private final UserRepository userRepository;
+    private final GroupParserService groupParserService;
+    private final UserMapper userMapper;
+
+    @PostConstruct
+    @Transactional
+    public void init() {
+        groupParserService.findAllGroups().forEach(group -> {
+            if (groupRepository.findByGroupNameIgnoreCase(group.getGroupName()).isEmpty()) {
+                groupRepository.save(group);
+            }
+        });
+    }
 
     public GroupDTO findDtoByName(String name) {
         GroupEntity group = groupRepository.findByGroupNameIgnoreCase(name)
@@ -55,6 +71,23 @@ public class GroupService {
 
         group.setStarosta(userEntity);
         userEntity.setGroup(group);
+        userEntity.setRole(UserRole.STAROSTA);
+
+        userRepository.save(userEntity);
+        return groupMapper.groupToDTO(groupRepository.save(group));
+    }
+
+    @Transactional
+    public GroupDTO delStarosta(String groupName, String starostaUsername) {
+        GroupEntity group = findEntityByName(groupName);
+        if (group.getStarosta() == null) {
+            throw ExceptionFabric.create(UserAlreadyNotExistsForStarostaException.class, ExceptionMessages.USER_NOW_NOT_EXISTS_AS_STAROSTA);
+        }
+        UserEntity userEntity = userRepository.findByUsername(starostaUsername).orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND));
+
+        group.setStarosta(null);
+        userEntity.setGroup(null);
+        userEntity.setRole(UserRole.STUDENT);
 
         userRepository.save(userEntity);
         return groupMapper.groupToDTO(groupRepository.save(group));
@@ -67,5 +100,14 @@ public class GroupService {
                 .build();
         groupRepository.save(group);
         return groupMapper.groupToDTO(group);
+    }
+
+    public UserDTO getStarosta(String groupName) {
+        GroupEntity group = findEntityByName(groupName);
+        UserEntity userEntity = group.getStarosta();
+        if (userEntity == null) {
+            ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND);
+        }
+        return userMapper.userToUserDTO(userEntity);
     }
 }

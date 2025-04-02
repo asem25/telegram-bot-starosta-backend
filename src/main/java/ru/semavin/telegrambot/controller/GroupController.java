@@ -1,7 +1,6 @@
 package ru.semavin.telegrambot.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,7 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.semavin.telegrambot.dto.GroupDTO;
-import ru.semavin.telegrambot.services.GroupService;
+import ru.semavin.telegrambot.dto.UserDTO;
+import ru.semavin.telegrambot.services.groups.GroupService;
 
 @RestController
 @RequestMapping("api/v1/groups")
@@ -56,7 +56,7 @@ public class GroupController {
         return ResponseEntity.ok(groupDTO);
     }
 
-    @PatchMapping
+    @PatchMapping("/setStarosta")
     @Operation(
             summary = "Назначить старосту группе",
             description = "Обновляет группу, устанавливая указанного пользователя как старосту.",
@@ -65,7 +65,7 @@ public class GroupController {
                     @ApiResponse(responseCode = "404", description = "Пользователь или группа не найдены")
             }
     )
-    public ResponseEntity<GroupDTO> updateGroup(
+    public ResponseEntity<GroupDTO> setStarosta(
             @Parameter(description = "Название группы, которую нужно обновить", example = "М3О-303С-22")
             @RequestParam String groupName,
             @Parameter(description = "Никнейм пользователя, которого нужно назначить старостой", example = "john_doe")
@@ -76,4 +76,31 @@ public class GroupController {
         log.info("Update group: {}", groupName);
         return ResponseEntity.ok(updatedGroupDTO);
     }
+
+    @PatchMapping("/delStarosta")
+    @Operation(
+            summary = "Назначить старосту группе",
+            description = "Обновляет группу, устанавливая указанного пользователя как старосту.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Группа успешно обновлена"),
+                    @ApiResponse(responseCode = "404", description = "Пользователь или группа не найдены")
+            }
+    )
+    public ResponseEntity<GroupDTO> delStarosta(
+            @Parameter(description = "Название группы, которую нужно обновить", example = "М3О-303С-22")
+            @RequestParam String groupName,
+            @Parameter(description = "Никнейм пользователя, которого нужно убрать от должности староста", example = "john_doe")
+            @RequestParam String starostaUsername
+    ) {
+        log.info("Mapping to /group PATCH; group:{}, username:{}", groupName, starostaUsername);
+        GroupDTO updatedGroupDTO = groupService.delStarosta(groupName, starostaUsername);
+        log.info("Update group: {}", groupName);
+        return ResponseEntity.ok(updatedGroupDTO);
+    }
+
+    @GetMapping("/getStarosta")
+    public ResponseEntity<UserDTO> getStarosta(@RequestParam String groupName) {
+        return ResponseEntity.ok(groupService.getStarosta(groupName));
+    }
+
 }
