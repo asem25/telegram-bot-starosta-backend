@@ -40,7 +40,7 @@ public class ScheduleService {
      * Если расписания нет, загружает актуальное.
      */
     @Transactional
-    @Cacheable(value = "scheduleCache", key = "#groupName + '-' + #week", unless = "#result == null or #result.isEmpty()")
+    @Cacheable(value = "scheduleCache", key = "#groupName + '-' + #week", unless = "#result == null")
     public List<ScheduleDTO> getScheduleFromDataBase(String groupName, String week) {
         String actualWeek = (week != null) ? week : semesterService.getCurrentWeek();
         int currentWeek = Integer.parseInt(actualWeek);

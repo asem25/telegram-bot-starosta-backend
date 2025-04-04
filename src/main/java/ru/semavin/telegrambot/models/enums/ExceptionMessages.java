@@ -18,7 +18,7 @@ public enum ExceptionMessages {
     USER_NOW_NOT_EXISTS_AS_STAROSTA("Пользователь не староста!"),
     USER_TELEGRAM_ID_EXISTS("Пользователь с таким Telegram_id уже есть!"),
     UNKNOWN_ERROR("Произошла неизвестная ошибка."),
-    INVALID_ROLE("Не правильно указана роль");
+    INVALID_ROLE("Не правильно указана роль"), DEADLINE_NOT_FOUND("Дедлайн не найден");
 
     private final String message;
 

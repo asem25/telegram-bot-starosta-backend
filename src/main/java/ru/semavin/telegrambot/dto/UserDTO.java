@@ -28,15 +28,13 @@ public class UserDTO {
     @Schema(description = "Тэг пользователя в телеграмм", example = "john_doe")
     private String username;
 
-    @NotNull(message = "Имя  не может быть null")
-    @Size(min = 3, max = 20, message = "Имя пользователя должно быть от 3 до 20 символов")
     @Schema(description = "Имя пользователя", example = "Иван")
     private String firstName;
 
-    @NotNull(message = "Фамилия пользователя не может быть null")
-    @Size(min = 3, max = 20, message = "Имя пользователя должно быть от 3 до 20 символов")
     @Schema(description = "Фамилия пользователя", example = "Иванов")
     private String lastName;
+    @Schema(description = "Отчество пользователя", example = "Иванович")
+    private String patronymic;
     @Builder.Default
     @Schema(description = "Роль пользователя", example = "user")
     private String role = "STUDENT";

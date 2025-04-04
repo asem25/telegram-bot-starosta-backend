@@ -3,6 +3,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @Table(name = "deadlines")
@@ -19,18 +20,26 @@ public class DeadlineEntity {
 
     @Column(name = "title")
     private String title;
-
+    @Column(name = "uuid")
+    private UUID uuid;
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "due_date")
     private LocalDate dueDate;
 
-    @Column(name = "target_group")
-    private String targetGroup;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private GroupEntity group;
 
     @ManyToOne
     @JoinColumn(name = "creator_id")
     private UserEntity creator;
+
+    @Column(name = "notified_3_days")
+    private boolean notified3Days;
+
+    @Column(name = "notified_1_day")
+    private boolean notified1Day;
 
 }
