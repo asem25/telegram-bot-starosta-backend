@@ -3,7 +3,9 @@ package ru.semavin.telegrambot.models;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "notifications")
@@ -14,24 +16,51 @@ import java.time.LocalDateTime;
 @Builder
 public class NotificationEntity {
 
+    /**
+     * Автоинкрементный первичный ключ (ID)
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "creator_id")
-    private UserEntity creator;
+    /**
+     * Дополнительный UUID (не PK, просто уникальный идентификатор).
+     * Можно заполнить в конструкторе или билдере, например UUID.randomUUID().
+     */
+    @Column(name = "uuid_id", nullable = false, updatable = false)
+    private UUID uuid;
 
-    @Column(name = "title")
-    private String title;
+    /**
+     * Ссылка на сущность пользователя (студента, который пропускает).
+     * Хранится как внешний ключ в колонке user_id.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserEntity username; // можно назвать user, чтобы было понятнее
 
-    @Column(name = "message", columnDefinition = "TEXT")
-    private String message;
+    /**
+     * Ссылка на сущность группы.
+     * Хранится как внешний ключ в колонке group_id.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", nullable = false)
+    private GroupEntity groupName; // можно назвать groupEntity, чтобы было понятнее
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    /**
+     * Описание/причина пропуска
+     */
+    @Column(name = "description")
+    private String description;
 
-    @Column(name = "target_group")
-    private String targetGroup;
+    /**
+     * Дата начала пропуска
+     */
+    @Column(name = "from_date", nullable = false)
+    private LocalDate fromDate;
 
+    /**
+     * Дата окончания пропуска
+     */
+    @Column(name = "to_date", nullable = false)
+    private LocalDate toDate;
 }
