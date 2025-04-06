@@ -43,7 +43,9 @@ public class UserService {
             // Если DTO groupName == null, значит пользователь без группы
             userEntity.setGroup(null);
         }
-        userEntity.setRole(UserRole.STUDENT);
+        // Если не назначена роль(не учитель, то ставим студента)
+        if (userEntity.getRole() == null)
+            userEntity.setRole(UserRole.STUDENT);
         UserEntity saved = userRepository.save(userEntity);
         log.info("User saved: {}", saved);
         return saved.getUsername();
