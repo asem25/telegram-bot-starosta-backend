@@ -2,6 +2,7 @@ package ru.semavin.telegrambot.services.schedules;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,7 @@ public class DailyScheduleUpdateService {
      */
     @Scheduled(cron = "0 15 0 * * *")
 //    @Scheduled(fixedRate = 60000)
+    @CacheEvict(value = "scheduleDay", allEntries = true)
     public void updateDailySchedules() {
         log.info("Начало ежедневного обновления расписания.");
         List<String> groups = getAllGroups();

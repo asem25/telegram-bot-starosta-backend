@@ -83,7 +83,7 @@ public class ScheduleServiceTest {
                 .thenReturn(Collections.singletonList(scheduleDTO));
 
         // 2. Вызываем метод
-        List<ScheduleDTO> result = scheduleService.getScheduleFromDataBase("М3О-303С-22", "3");
+        List<ScheduleDTO> result = scheduleService.getScheduleFromDataBase("М3О-303С-22");
 
         // 3. Проверяем результаты
         assertNotNull(result, "Список расписаний не должен быть null");

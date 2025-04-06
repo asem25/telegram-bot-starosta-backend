@@ -47,7 +47,7 @@ public class ScheduleController {
     public ResponseEntity<List<ScheduleDTO>> getSchedule(
             @Parameter(description = "Название группы", required = true) @RequestParam String groupName,
             @Parameter(description = "Номер недели (необязательный параметр)") @RequestParam(required = false) String week) {
-        return ResponseEntity.ok(scheduleService.getScheduleFromDataBase(groupName, week));
+        return ResponseEntity.ok(scheduleService.getScheduleFromDataBase(groupName));
     }
 
     /**
