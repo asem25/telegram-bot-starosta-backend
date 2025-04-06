@@ -27,8 +27,8 @@ public class DailyScheduleUpdateService {
      * Метод, запускаемый ежедневно в 20:00 вечера.
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
      */
-    @Scheduled(cron = "0 15 0 * * *")
-//    @Scheduled(fixedRate = 60000)
+//    @Scheduled(cron = "0 15 0 * * *")
+    @Scheduled(fixedRate = 60000 * 60 * 12)
     @CacheEvict(value = "scheduleDay", allEntries = true)
     public void updateDailySchedules() {
         log.info("Начало ежедневного обновления расписания.");

@@ -76,8 +76,8 @@ public class UserService {
                             .teacherUuid(teacherUuid)
                             .role(UserRole.TEACHER)
                             .firstName("Не указан")
-                            .lastName("")
-                            .patronymic("")
+                            .lastName(" ")
+                            .patronymic(" ")
                             .build()
             ));
         }
