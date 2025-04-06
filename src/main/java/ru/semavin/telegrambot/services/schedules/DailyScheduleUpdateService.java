@@ -21,21 +21,20 @@ import java.util.List;
 public class DailyScheduleUpdateService {
 
     private final ScheduleService scheduleService;
-    private final SemesterService semesterService; // Для получения текущей недели
 
     /**
      * Метод, запускаемый ежедневно в 20:00 вечера.
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
      */
-    @Scheduled(cron = "0 0 1 1/3 * *")
+    @Scheduled(cron = "0 15 0 * * *")
+//    @Scheduled(fixedRate = 60000)
     public void updateDailySchedules() {
         log.info("Начало ежедневного обновления расписания.");
-        String currentWeek = semesterService.getCurrentWeek();
         List<String> groups = getAllGroups();
 
         for (String group : groups) {
             try {
-                log.info("Обновление расписания для группы {} на неделю {}", group, currentWeek);
+                log.info("Обновление расписания для группы {}", group);
                 scheduleService.getActualSchedule(group);
             } catch (Exception e) {
                 log.error("Ошибка обновления расписания для группы {}: {}", group, e.getMessage(), e);

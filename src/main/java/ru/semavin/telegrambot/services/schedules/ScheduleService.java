@@ -3,6 +3,7 @@ package ru.semavin.telegrambot.services.schedules;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -12,10 +13,13 @@ import ru.semavin.telegrambot.mapper.ScheduleMapper;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.repositories.ScheduleRepository;
+import ru.semavin.telegrambot.services.cache.CacheUtil;
 import ru.semavin.telegrambot.services.groups.GroupService;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -31,6 +35,9 @@ public class ScheduleService {
     private final SemesterService semesterService;
     private final GroupService groupService;
 
+    private final CacheUtil cacheUtil;
+
+
     @PostConstruct
     public void init() {
 
@@ -40,7 +47,7 @@ public class ScheduleService {
      * Если расписания нет, загружает актуальное.
      */
     @Transactional
-    @Cacheable(value = "scheduleCache", key = "#groupName + '-' + #week", unless = "#result == null")
+    @Cacheable(value = "scheduleWeek", key = "#groupName + '-' + #week", unless = "#result == null")
     public List<ScheduleDTO> getScheduleFromDataBase(String groupName, String week) {
         String actualWeek = (week != null) ? week : semesterService.getCurrentWeek();
         int currentWeek = Integer.parseInt(actualWeek);
@@ -63,8 +70,12 @@ public class ScheduleService {
      * Получает актуальное расписание для указанной группы и недели, парсит сайт и сохраняет в БД.
      */
     @Transactional
-    @CacheEvict(value = "scheduleCache", key = "#groupName")
     public List<ScheduleDTO> getActualSchedule(String groupName) {
+        // Сносим все кэш-ключи, связанные с этой группой (не трогаем данные других групп)
+        // Удаляем все ключи, относящиеся к группе, в обоих кэшах
+        cacheUtil.evictAllGroupKeys("scheduleWeek", groupName);
+        cacheUtil.evictAllGroupKeys("scheduleDay", groupName);
+
         GroupEntity group = groupService.findEntityByName(groupName);
         CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> scheduleParserService.findScheduleByGroup(group));
 
@@ -88,7 +99,7 @@ public class ScheduleService {
      */
 
     @Transactional
-    @Cacheable(value = "scheduleDay", key ="#groupName + '-' + #date", unless = "#result == null or #result.isEmpty()")
+    @Cacheable(value = "scheduleDay", key = "#groupName + '-' + #date", unless = "#result == null")
     public List<ScheduleDTO> getScheduleForDay(String groupName, String date) {
         LocalDate parsingDate = semesterService.getFormatterDate(date);
         int actualWeek = Integer.parseInt(semesterService.getWeekForDate(date));
