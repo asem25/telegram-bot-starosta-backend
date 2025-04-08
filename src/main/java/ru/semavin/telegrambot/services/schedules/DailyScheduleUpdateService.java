@@ -53,6 +53,6 @@ public class DailyScheduleUpdateService {
      */
     private static List<String> getAllGroups() {
         //TODO в большом приложение возможно, что будет очень много групп, нужно удалять неактуальные
-        return Arrays.asList("М3О-303С-22");
+        return Arrays.asList("М3О-303С-22", "М3О-106СВ-24");
     }
 }
