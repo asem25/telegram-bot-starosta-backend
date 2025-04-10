@@ -16,7 +16,7 @@ import java.time.LocalTime;
 @AllArgsConstructor
 @Schema(description = "DTO для расписания")
 public class ScheduleDTO {
-
+    private Long id;
     @Schema(description = "Название группы", example = "М3О-303С-22")
     private String groupName;
 
@@ -31,6 +31,9 @@ public class ScheduleDTO {
 
     @Schema(description = "Аудитория", example = "Ауд. 301")
     private String classroom;
+
+    @Schema(description = "Описание(если есть какие то изменения)", example = "Перенос на 13.00")
+    private String description;
 
     @Schema(description = "Дата занятия", example = "2025-03-20")
     private LocalDate lessonDate;

@@ -21,4 +21,6 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
      */
 
     void deleteAllByGroup(GroupEntity group);
+
+    ScheduleEntity findByGroupAndLessonDateAndStartTime(GroupEntity group, LocalDate lessonDate, LocalTime startTime);
 }

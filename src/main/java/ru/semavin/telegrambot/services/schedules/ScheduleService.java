@@ -11,15 +11,24 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
 import ru.semavin.telegrambot.mapper.ScheduleMapper;
 import ru.semavin.telegrambot.models.GroupEntity;
+import ru.semavin.telegrambot.models.ScheduleChangeEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
+import ru.semavin.telegrambot.models.enums.ExceptionMessages;
 import ru.semavin.telegrambot.repositories.ScheduleRepository;
+import ru.semavin.telegrambot.services.ScheduleChangeService;
 import ru.semavin.telegrambot.services.cache.CacheUtil;
 import ru.semavin.telegrambot.services.groups.GroupService;
+import ru.semavin.telegrambot.utils.DateUtils;
+import ru.semavin.telegrambot.utils.ExceptionFabric;
+import ru.semavin.telegrambot.utils.exceptions.ScheduleNotFoundException;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -34,7 +43,7 @@ public class ScheduleService {
     private final ScheduleMapper scheduleMapper;
     private final SemesterService semesterService;
     private final GroupService groupService;
-
+    private final ScheduleChangeService scheduleChangeService;
     @PostConstruct
     public void init() {
     }
@@ -86,9 +95,47 @@ public class ScheduleService {
         GroupEntity group = groupService.findEntityByName(groupName);
 
 
-        // После загрузки недели ищем расписание на текущий день
         List<ScheduleEntity> updatedSchedule = scheduleRepository.findAllByLessonDateAndGroup(parsingDate, group);
+        List<ScheduleDTO> original = scheduleMapper.toScheduleDTOList(updatedSchedule);
+        List<ScheduleChangeEntity> changes = scheduleChangeService.getChangesForDay(groupName, parsingDate);
 
-        return scheduleMapper.toScheduleDTOList(updatedSchedule);
+        return mergeChanges(original, changes);
+    }
+
+
+    private List<ScheduleDTO> mergeChanges(List<ScheduleDTO> originalSchedule, List<ScheduleChangeEntity> changes) {
+        List<ScheduleDTO> merged = new ArrayList<>();
+
+        for (ScheduleDTO dto : originalSchedule) {
+            ScheduleChangeEntity matchedChange = changes.stream()
+                    .filter(change ->
+                            change.getOldLessonDate().equals(dto.getLessonDate()) &&
+                                    change.getOldStartTime().equals(dto.getStartTime()) &&
+                                    change.getSubjectName().equalsIgnoreCase(dto.getSubjectName())
+                    )
+                    .findFirst()
+                    .orElse(null);
+
+            if (matchedChange != null) {
+                if (matchedChange.isDeleted()) {
+                    continue;
+                }
+                dto.setLessonDate(Optional.ofNullable(matchedChange.getNewLessonDate()).orElse(dto.getLessonDate()));
+                dto.setStartTime(Optional.ofNullable(matchedChange.getNewStartTime()).orElse(dto.getStartTime()));
+                dto.setEndTime(Optional.ofNullable(matchedChange.getNewEndTime()).orElse(dto.getEndTime()));
+                dto.setDescription(matchedChange.getDescription());
+            }
+
+            merged.add(dto);
+        }
+
+        return merged;
+    }
+
+    public ScheduleDTO findLesson(String groupName, String date, String startTime) {
+        GroupEntity group = groupService.findEntityByName(groupName);
+        LocalDate lessonDate = semesterService.getFormatterDate(date);
+        LocalTime time = LocalTime.parse(startTime, DateTimeFormatter.ofPattern("HH:mm"));
+        return scheduleMapper.toScheduleDTO(scheduleRepository.findByGroupAndLessonDateAndStartTime(group, lessonDate, time));
     }
 }

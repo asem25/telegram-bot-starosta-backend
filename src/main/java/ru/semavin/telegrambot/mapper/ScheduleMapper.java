@@ -12,6 +12,7 @@ public interface ScheduleMapper {
     @Mapping(target = "group.groupName", source = "groupName")
     ScheduleEntity toScheduleEntity(ScheduleDTO dto);
 
+    @Mapping(target = "id", source = "id")
     @Mapping(target = "groupName", source = "group.groupName")
     @Mapping(target = "teacherName", expression = "java(entity.getTeacher().getFirstName() + \" \" + entity.getTeacher().getPatronymic() + \" \" + entity.getTeacher().getLastName())")
     ScheduleDTO toScheduleDTO(ScheduleEntity entity);

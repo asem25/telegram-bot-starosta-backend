@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.semavin.telegrambot.dto.ScheduleChangeDTO;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
+import ru.semavin.telegrambot.services.ScheduleChangeService;
 import ru.semavin.telegrambot.services.schedules.ScheduleService;
 import ru.semavin.telegrambot.utils.DateUtils;
 
@@ -26,7 +28,7 @@ import java.util.List;
 public class ScheduleController {
     //TODO GET /month GET /semestr (teacher)
     private final ScheduleService scheduleService;
-
+    private final ScheduleChangeService scheduleChangeService;
     /**
      * Получение расписания за указанную или текущую неделю.
      *
@@ -110,4 +112,42 @@ public class ScheduleController {
             @Parameter(description = "Название группы", required = true) @RequestParam String groupName) {
         return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, DateUtils.getTomorrowWithCheckSunDay()));
     }
+
+    /**
+     * Удаление одной пары по её ID.
+     */
+    @DeleteMapping("/change")
+    @Operation(summary = "Отметить удаление пары в таблице изменений")
+    public ResponseEntity<String> markScheduleAsDeleted(
+            @RequestBody ScheduleChangeDTO changeDto,
+            @RequestParam String groupName
+    ) {
+        scheduleChangeService.markAsDeleted(changeDto, groupName);
+        return ResponseEntity.ok("Удаление пары отмечено в изменениях расписания");
+    }
+
+    @GetMapping("/lesson")
+    @Operation(summary = "Найти пару")
+    public ResponseEntity<ScheduleDTO> getLessonByGroupNameAndDate(
+            @RequestParam String groupName,
+            @RequestParam String date,
+            @RequestParam String startTime
+    ) {
+
+        return ResponseEntity.ok(scheduleService.findLesson(groupName, date, startTime));
+    }
+
+    /**
+     * Редактирование (обновление) одной пары по её ID.
+     */
+    @PutMapping("/change")
+    @Operation(summary = "Редактировать расписание с сохранением изменений в отдельной таблице")
+    public ResponseEntity<String> editSchedule(
+            @RequestBody ScheduleChangeDTO changeDto,
+            @RequestParam String groupName
+    ) {
+        scheduleChangeService.createOrUpdate(changeDto, groupName);
+        return ResponseEntity.ok("Изменение расписания сохранено");
+    }
+
 }
