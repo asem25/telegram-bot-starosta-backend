@@ -16,6 +16,7 @@ import ru.semavin.telegrambot.services.ScheduleChangeService;
 @Slf4j
 @Tag(name = "Schedule Change API")
 public class ScheduleChangeController {
+    //TODO добавить получение и удаление изменений
     private final ScheduleChangeService changeService;
 
     @PostMapping
