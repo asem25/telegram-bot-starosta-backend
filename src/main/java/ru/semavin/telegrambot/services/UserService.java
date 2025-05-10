@@ -47,7 +47,7 @@ public class UserService {
         if (userEntity.getRole() == null)
             userEntity.setRole(UserRole.STUDENT);
         UserEntity saved = userRepository.save(userEntity);
-        log.info("User saved: {}", saved);
+        log.info("User saved: {}", saved.getUsername());
         return saved.getUsername();
     }
 
