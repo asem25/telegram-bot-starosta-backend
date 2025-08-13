@@ -29,7 +29,7 @@ public class DeadlineController {
         return ResponseEntity.ok(deadlineService.getAllByGroup(groupName));
     }
 
-    @Operation(summary = "Создать новый дедлайн")
+    @Operation(summary = "Создание нового дедлайна")
     @PostMapping
     public ResponseEntity<DeadlineDTO> createDeadline(@RequestBody DeadlineDTO dto) {
         log.info("POST api/v1/deadlines, body {}", dto);
