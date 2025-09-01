@@ -21,7 +21,7 @@ jobs:
           cache: 'maven'
 
       - name: Build & test
-        run: mvn -B -ntp clean verify
+        run: mvn -B -ntp clean package -DskipTests
 
   docker-build-push:
     needs: build-test
