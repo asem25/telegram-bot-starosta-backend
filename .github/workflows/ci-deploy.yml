@@ -63,7 +63,7 @@ jobs:
             uptime
 
   deploy:
-    needs: docker-build-push
+    needs: ssh-test
     runs-on: ubuntu-latest
     steps:
       - name: SSH deploy
