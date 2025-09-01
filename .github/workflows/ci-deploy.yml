@@ -74,7 +74,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
-            cd /opt/bot-stack
+            cd /ru/asem/bot
             sed -i "s/^BACK_TAG=.*/BACK_TAG=sha-${{ github.sha }}/" .env
             docker compose pull backend
             docker compose up -d backend
