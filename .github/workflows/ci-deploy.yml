@@ -59,7 +59,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /ru/asem/bot
+            cd /ru/asem/bot/telegram-starosta-infra
             docker compose up -d postgres
             for i in {1..30}; do
               if [ "$(docker inspect -f '{{json .State.Health.Status}}' $(docker compose ps -q postgres))" = "\"healthy\"" ]; then
