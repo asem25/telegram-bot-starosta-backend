@@ -11,6 +11,6 @@ FROM eclipse-temurin:17-jre-alpine
 RUN apk add --no-cache curl
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
-EXPOSE 8080
+EXPOSE 8081
 ENV JAVA_TOOL_OPTIONS="-XX:ActiveProcessorCount=1 -XX:+UseSerialGC -Xms64m -Xmx128m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=32m -Dspring.main.lazy-initialization=true -Dserver.tomcat.max-threads=20 -Dspring.datasource.hikari.maximum-pool-size=3 -Dspring.datasource.hikari.minimum-idle=0"
 ENTRYPOINT ["java","-jar","app.jar"]
