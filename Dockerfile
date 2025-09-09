@@ -15,14 +15,12 @@ EXPOSE 8081
 ENV JAVA_TOOL_OPTIONS=" \
  -XX:ActiveProcessorCount=1 \
  -XX:+UseSerialGC \
- -XX:MaxRAMPercentage=54 -XX:InitialRAMPercentage=25 \
+ -XX:MaxRAMPercentage=60 -XX:InitialRAMPercentage=24 \
  -Xss256k \
- -XX:MaxMetaspaceSize=80m \
- -XX:ReservedCodeCacheSize=12m \
- -XX:MaxDirectMemorySize=12m \
+ -XX:MaxMetaspaceSize=108m \
+ -XX:ReservedCodeCacheSize=16m -XX:MaxDirectMemorySize=24m \
  -XX:+ClassUnloading -XX:+ExitOnOutOfMemoryError \
- -Dspring.jmx.enabled=false \
- -Dspring.main.lazy-initialization=true \
+ -Dspring.jmx.enabled=false -Dspring.main.lazy-initialization=true \
  -Dserver.port=8081 \
  -Dserver.tomcat.max-threads=16 -Dserver.tomcat.accept-count=50 \
  -Dspring.datasource.hikari.maximum-pool-size=3 -Dspring.datasource.hikari.minimum-idle=0 \
