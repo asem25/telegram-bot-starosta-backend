@@ -137,7 +137,7 @@ public class ScheduleService {
                         && !targetDate.equals(ch.getOldLessonDate()))
                 .forEach(ch -> {
                     ScheduleDTO dto = ScheduleDTO.builder()
-                            .groupName(originalSchedule.getLast().getGroupName())
+                            .groupName(originalSchedule.get(0).getGroupName())
                             .subjectName(ch.getSubjectName())
                             .lessonDate(ch.getNewLessonDate())
                             .startTime(ch.getNewStartTime())
