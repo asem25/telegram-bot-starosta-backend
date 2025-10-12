@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.dto.ScheduleChangeDTO;
+import ru.semavin.telegrambot.dto.ScheduleChangeForEveryDayCheckDTO;
+import ru.semavin.telegrambot.dto.ScheduleChangeForFrontDTO;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleChangeEntity;
 import ru.semavin.telegrambot.repositories.ScheduleChangeRepository;
@@ -49,6 +51,37 @@ public class ScheduleChangeService {
     public List<ScheduleChangeEntity> getChangesForDay(String groupName, LocalDate date) {
         GroupEntity group = groupService.findEntityByName(groupName);
         return changeRepository.findAllByGroupAndOldLessonDate(group, date);
+    }
+
+    public ScheduleChangeForEveryDayCheckDTO getChangesDtoForDay(String groupName, LocalDate date) {
+        GroupEntity group = groupService.findEntityByName(groupName);
+        return changesToDto(changeRepository.findAllByGroupAndOldLessonDate(group, date));
+    }
+
+    private ScheduleChangeForEveryDayCheckDTO changesToDto(List<ScheduleChangeEntity> scheduleChangeEntities) {
+        return ScheduleChangeForEveryDayCheckDTO.builder()
+                .scheduleChangeEntityList(scheduleChangeEntities
+                        .stream()
+                        .map(this::prepareForFront)
+                        .toList())
+                .build();
+    }
+
+    private ScheduleChangeForFrontDTO prepareForFront(ScheduleChangeEntity scheduleChangeEntity) {
+        return ScheduleChangeForFrontDTO.builder()
+                .deleted(scheduleChangeEntity.isDeleted())
+                .classroom(scheduleChangeEntity.getClassroom())
+                .lessonType(scheduleChangeEntity.getLessonType())
+                .newEndTime(scheduleChangeEntity.getNewEndTime())
+                .newLessonDate(scheduleChangeEntity.getNewLessonDate())
+                .newStartTime(scheduleChangeEntity.getNewStartTime())
+                .oldEndTime(scheduleChangeEntity.getOldEndTime())
+                .oldLessonDate(scheduleChangeEntity.getOldLessonDate())
+                .oldStartTime(scheduleChangeEntity.getOldStartTime())
+                .subjectName(scheduleChangeEntity.getSubjectName())
+                .teacherName(scheduleChangeEntity.getTeacherName())
+                .description(scheduleChangeEntity.getDescription())
+                .build();
     }
 
     @CacheEvict(value = "scheduleDay", key = "#groupName + '-' + #dto.oldLessonDate.format(T(ru.semavin.telegrambot.utils.DateUtils).FORMATTER)")

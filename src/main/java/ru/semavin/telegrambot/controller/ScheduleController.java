@@ -2,14 +2,16 @@ package ru.semavin.telegrambot.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import ru.semavin.telegrambot.dto.ScheduleChangeDTO;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
 import ru.semavin.telegrambot.services.ScheduleChangeService;
 import ru.semavin.telegrambot.services.schedules.ScheduleService;
@@ -113,19 +115,6 @@ public class ScheduleController {
         return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, DateUtils.getTomorrowWithCheckSunDay()));
     }
 
-    /**
-     * Удаление одной пары по её ID.
-     */
-    @DeleteMapping("/change")
-    @Operation(summary = "Отметить удаление пары в таблице изменений")
-    public ResponseEntity<String> markScheduleAsDeleted(
-            @RequestBody ScheduleChangeDTO changeDto,
-            @RequestParam String groupName
-    ) {
-        scheduleChangeService.markAsDeleted(changeDto, groupName);
-        return ResponseEntity.ok("Удаление пары отмечено в изменениях расписания");
-    }
-
     @GetMapping("/lesson")
     @Operation(summary = "Найти пару")
     public ResponseEntity<ScheduleDTO> getLessonByGroupNameAndDate(
@@ -135,19 +124,6 @@ public class ScheduleController {
     ) {
 
         return ResponseEntity.ok(scheduleService.findLesson(groupName, date, startTime));
-    }
-
-    /**
-     * Редактирование (обновление) одной пары по её ID.
-     */
-    @PutMapping("/change")
-    @Operation(summary = "Редактировать расписание с сохранением изменений в отдельной таблице")
-    public ResponseEntity<String> editSchedule(
-            @RequestBody ScheduleChangeDTO changeDto,
-            @RequestParam String groupName
-    ) {
-        scheduleChangeService.createOrUpdate(changeDto, groupName);
-        return ResponseEntity.ok("Изменение расписания сохранено");
     }
 
 }
