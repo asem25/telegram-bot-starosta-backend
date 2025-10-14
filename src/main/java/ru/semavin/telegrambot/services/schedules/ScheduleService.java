@@ -1,6 +1,5 @@
 package ru.semavin.telegrambot.services.schedules;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,7 +20,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Сервис для работы с расписанием.
@@ -36,36 +34,20 @@ public class ScheduleService {
     private final SemesterService semesterService;
     private final GroupService groupService;
     private final ScheduleChangeService scheduleChangeService;
-    @PostConstruct
-    public void init() {
-    }
-    /**
-     * Получает расписание для указанной группы и недели из БД.
-     * Если расписания нет, загружает актуальное.
-     */
-    @Transactional
-    @Deprecated
-    public List<ScheduleDTO> getScheduleFromDataBase(String groupName) {
-        //Бесполезен
-        return getActualSchedule(groupName);
-    }
 
     /**
      * Получает актуальное расписание для указанной группы и недели, парсит сайт и сохраняет в БД.
      */
     @Transactional
     public List<ScheduleDTO> getActualSchedule(String groupName) {
-        ;
-
         GroupEntity group = groupService.findEntityByName(groupName);
-        CompletableFuture<List<ScheduleEntity>> future = CompletableFuture.supplyAsync(() -> scheduleParserService.findScheduleByGroup(group));
 
-        List<ScheduleEntity> scheduleEntities = future.join();
+        List<ScheduleEntity> scheduleEntities = scheduleParserService.findScheduleByGroup(group);
 
         scheduleRepository.deleteAllByGroup(group);
 
-        log.info("Расписание найдено");
-        // Сохраняем новые записи
+        log.info("Расписание для группы {} найдено", group);
+
         List<ScheduleEntity> savedEntities = scheduleRepository.saveAllAndFlush(scheduleEntities);
 
         return scheduleMapper.toScheduleDTOList(savedEntities);
@@ -74,8 +56,9 @@ public class ScheduleService {
     /**
      * Возвращает расписание за заданный день
      * Кэширование + проверка в БД
+     *
      * @param groupName номер группы
-     * @param date дата в виде строки
+     * @param date      дата в виде строки
      * @return возвращает список DTO расписаний
      */
 

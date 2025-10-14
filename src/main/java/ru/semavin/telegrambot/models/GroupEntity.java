@@ -57,4 +57,13 @@ public class GroupEntity {
     public int hashCode() {
         return Objects.hash(groupName);
     }
+
+    @Override
+    public String toString() {
+        return "GroupEntity{" +
+                "id=" + id +
+                ", groupName='" + groupName + '\'' +
+                ", starosta=" + starosta.getId() +
+                '}';
+    }
 }

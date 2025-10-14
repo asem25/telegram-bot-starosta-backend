@@ -85,4 +85,20 @@ public class UserEntity {
     )
     @Builder.Default
     private Set<GroupEntity> teachingGroups = new HashSet<>();
+
+    @Override
+    public String toString() {
+        return "UserEntity{" +
+                "id=" + id +
+                ", telegramId=" + telegramId +
+                ", username='" + username + '\'' +
+                ", patronymic='" + patronymic + '\'' +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", role=" + role +
+                ", group=" + group.getGroupName() +
+                ", teacherUuid='" + teacherUuid + '\'' +
+                ", teachingGroups=" + teachingGroups +
+                '}';
+    }
 }

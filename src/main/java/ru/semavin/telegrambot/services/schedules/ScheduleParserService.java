@@ -10,30 +10,32 @@ import org.springframework.web.client.RestTemplate;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.models.UserEntity;
+import ru.semavin.telegrambot.models.enums.ExceptionMessages;
 import ru.semavin.telegrambot.models.enums.LessonType;
 import ru.semavin.telegrambot.services.UserService;
 import ru.semavin.telegrambot.utils.DateUtils;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
-import ru.semavin.telegrambot.models.enums.ExceptionMessages;
 import ru.semavin.telegrambot.utils.exceptions.ScheduleNotFoundException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ScheduleParserService {
 
-    // Формат для времени, как в JSON ("9:00:00")
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm:ss");
     private static final String SCHEDULE_URL = "https://public.mai.ru/schedule/data/";
 
@@ -41,7 +43,7 @@ public class ScheduleParserService {
     private final UserService teacherService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-
+    private final ExecutorService executorService;
 
     public List<ScheduleEntity> findScheduleByGroup(GroupEntity groupEntity) {
         String jsonString = getJsonOfScheduleStudentWithGroupName(groupEntity.getGroupName());
@@ -51,12 +53,9 @@ public class ScheduleParserService {
             throw ExceptionFabric.create(ScheduleNotFoundException.class, ExceptionMessages.SCHEDULE_NOT_FOUND);
         }
         try {
-            // Парсим JSON один раз
             JsonNode rootNode = objectMapper.readTree(jsonString);
-            // Кэшируем дату начала семестра
             LocalDate semesterStart = semesterService.getStartSemester();
-            // Кэш для преподавателей, чтобы избежать дублирующих обращений
-            Map<String, UserEntity> teacherCache = new HashMap<>();
+            Map<String, UserEntity> teacherCache = new ConcurrentHashMap<>();
             List<ScheduleEntity> scheduleList = extractScheduleFromJson(groupEntity, rootNode, semesterStart, teacherCache);
             log.info("Найдено {} пар для группы {}", scheduleList.size(), groupEntity.getGroupName());
             return scheduleList;
@@ -67,25 +66,31 @@ public class ScheduleParserService {
     }
 
     private List<ScheduleEntity> extractScheduleFromJson(GroupEntity groupEntity, JsonNode rootNode, LocalDate semesterStart, Map<String, UserEntity> teacherCache) {
-        List<ScheduleEntity> scheduleList = new ArrayList<>();
-        Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            String key = entry.getKey();
-            if ("group".equals(key)) {
-                continue;
-            }
-            LocalDate dateOfKey = LocalDate.parse(key, DateUtils.FORMATTER);
-            // Обрабатываем записи только после начала семестра
-            if (!dateOfKey.isBefore(semesterStart)) {
-                JsonNode dayNode = entry.getValue();
-                JsonNode pairsNode = dayNode.get("pairs");
-                if (pairsNode != null) {
-                    scheduleList.addAll(parsePairs(pairsNode, groupEntity, key, teacherCache));
-                }
-            }
-        }
-        return scheduleList;
+        List<CompletableFuture<List<ScheduleEntity>>> tasks =
+                streamFields(rootNode)
+                        .filter(e -> !"group".equals(e.getKey()))
+                        .filter(e -> !LocalDate.parse(e.getKey(), DateUtils.FORMATTER).isBefore(semesterStart))
+                        .map(e -> {
+                            String date = e.getKey();
+                            JsonNode pairsNode = e.getValue().path("pairs");
+                            if (pairsNode.isMissingNode() || pairsNode.isNull()) {
+                                return CompletableFuture.completedFuture(Collections.<ScheduleEntity>emptyList());
+                            }
+                            // Запускаем парсинг дня в пуле
+                            return CompletableFuture.supplyAsync(
+                                    () -> parsePairs(pairsNode, groupEntity, date, teacherCache),
+                                    executorService
+                            );
+                        })
+                        .toList();
+
+        CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
+
+        return tasks.stream()
+                .map(CompletableFuture::join)
+                .flatMap(List::stream)
+                .onClose(() -> log.info("Получено пар для группы {}", groupEntity.getGroupName()))
+                .toList();
     }
 
     private String getJsonOfScheduleStudentWithGroupName(String groupName) {
@@ -97,78 +102,115 @@ public class ScheduleParserService {
         return DigestUtils.md5DigestAsHex(input.getBytes(StandardCharsets.UTF_8));
     }
 
+    private Optional<String> firstFieldName(JsonNode n) {
+        var it = n != null ? n.fieldNames() : null;
+        return (it != null && it.hasNext()) ? Optional.ofNullable(it.next()) : Optional.empty();
+    }
+
+    private Optional<String> firstFieldValue(JsonNode n) {
+        var it = n != null ? n.fields() : null;
+        return (it != null && it.hasNext()) ? Optional.ofNullable(it.next().getValue().asText()) : Optional.empty();
+    }
+
+    private static Stream<Map.Entry<String, JsonNode>> streamFields(JsonNode node) {
+        var it = node.fields();
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(it, 0), false);
+    }
+
+
     private List<ScheduleEntity> parsePairs(JsonNode pairsNode, GroupEntity groupEntity, String lessonDate, Map<String, UserEntity> teacherCache) {
-        List<ScheduleEntity> scheduleList = new ArrayList<>();
-        // Вычисляем номер недели один раз для данного дня
         int lessonWeek = Integer.parseInt(semesterService.getWeekForDate(lessonDate));
-        Iterator<Map.Entry<String, JsonNode>> timeEntries = pairsNode.fields();
-        while (timeEntries.hasNext()) {
-            Map.Entry<String, JsonNode> timeEntry = timeEntries.next();
-            JsonNode pairDetailsNode = timeEntry.getValue();
-            Iterator<Map.Entry<String, JsonNode>> subjectEntries = pairDetailsNode.fields();
-            while (subjectEntries.hasNext()) {
-                Map.Entry<String, JsonNode> subjectEntry = subjectEntries.next();
-                String subjectName = subjectEntry.getKey();
-                JsonNode lessonNode = subjectEntry.getValue();
+        return streamFields(pairsNode)
+                .flatMap(timeEntry -> streamFields(timeEntry.getValue())
+                        .map(subjectEntry -> Map.entry(timeEntry.getKey(), subjectEntry)))
+                .map(entry -> extractScheduleEntityFromJson(groupEntity,
+                        lessonDate, teacherCache,
+                        entry, lessonWeek)
+                )
+                .sorted(Comparator.comparing(ScheduleEntity::getLessonDate)
+                        .thenComparing(ScheduleEntity::getStartTime))
+                .onClose(() -> log.info("Найдено расписание для группы {} дата {}",
+                        groupEntity.getGroupName(),
+                        lessonDate))
+                .collect(Collectors.collectingAndThen
+                        (Collectors.toList(), this::mergeSchedule));
+    }
 
-                String timeStartStr = lessonNode.path("time_start").asText();
-                String timeEndStr = lessonNode.path("time_end").asText();
-                LocalTime startTime = LocalTime.parse(timeStartStr, TIME_FORMATTER);
-                LocalTime endTime = LocalTime.parse(timeEndStr, TIME_FORMATTER);
+    private List<ScheduleEntity> mergeSchedule(List<ScheduleEntity> list) {
+        List<ScheduleEntity> returning = new ArrayList<>();
 
-                String typeKey = "";
-                if (lessonNode.has("type")) {
-                    Iterator<String> typeFields = lessonNode.get("type").fieldNames();
-                    if (typeFields.hasNext()) {
-                        typeKey = typeFields.next();
-                    }
-                }
-                LessonType lessonType = mapLessonType(typeKey);
+        int left = 0;
 
-                String classroom = "";
-                if (lessonNode.has("room")) {
-                    Iterator<Map.Entry<String, JsonNode>> roomFields = lessonNode.get("room").fields();
-                    if (roomFields.hasNext()) {
-                        classroom = roomFields.next().getValue().asText();
-                    }
-                }
+        while (left < list.size()) {
+            int right = left + 1;
+            var tempSchedule = list.get(left);
 
-                String teacherName = "";
-                String teacherUuid = null;
-                if (lessonNode.has("lector")) {
-                    Iterator<Map.Entry<String, JsonNode>> lectorFields = lessonNode.get("lector").fields();
-                    if (lectorFields.hasNext()) {
-                        Map.Entry<String, JsonNode> lectorEntry = lectorFields.next();
-                        teacherUuid = lectorEntry.getKey();
-                        teacherName = lectorEntry.getValue().asText();
-                    }
-                }
-
-                UserEntity teacher;
-                if (teacherCache.containsKey(teacherUuid)) {
-                    teacher = teacherCache.get(teacherUuid);
-                } else {
-                    teacher = teacherService.findOrCreateTeacherAndAddGroup(teacherUuid, teacherName, groupEntity);
-                }
-
-
-                ScheduleEntity entity = ScheduleEntity.builder()
-                        .group(groupEntity)
-                        .subjectName(subjectName)
-                        .lessonType(lessonType)
-                        .teacher(teacher)
-                        .classroom(classroom)
-                        .lessonDate(LocalDate.parse(lessonDate, DateUtils.FORMATTER))
-                        .startTime(startTime)
-                        .endTime(endTime)
-                        .lessonWeek(lessonWeek)
-                        .build();
-
-                scheduleList.add(entity);
+            while (right < list.size() &&
+                    isDoublePair(list.get(left), list.get(right))) {
+                tempSchedule.setEndTime(list.get(right).getEndTime());
+                right++;
             }
+            returning.add(tempSchedule);
+            left = right;
         }
-        log.debug("Найдено для даты {}: {}", lessonDate, scheduleList);
-        return scheduleList;
+        return returning;
+    }
+
+    private static boolean isDoublePair(ScheduleEntity first, ScheduleEntity second) {
+        return Objects.equals(first.getSubjectName(), second.getSubjectName())
+                &&
+                first.getTeacher().getTeacherUuid().equalsIgnoreCase(second.getTeacher().getTeacherUuid())
+                &&
+                first.getLessonType().equals(second.getLessonType())
+                &&
+                first.getClassroom().equalsIgnoreCase(second.getClassroom())
+                &&
+                (Duration.between(first.getEndTime(), second.getStartTime())).toMinutes() <= 15;
+    }
+
+    private ScheduleEntity extractScheduleEntityFromJson(GroupEntity groupEntity,
+                                                         String lessonDate,
+                                                         Map<String, UserEntity> teacherCache,
+                                                         Map.Entry<String, Map.Entry<String, JsonNode>> entry,
+                                                         int lessonWeek) {
+        String subjectName = entry.getValue().getKey();
+        JsonNode lessonNode = entry.getValue().getValue();
+
+        LocalTime start = LocalTime.parse(lessonNode.path("time_start").asText(), TIME_FORMATTER);
+        LocalTime end = LocalTime.parse(lessonNode.path("time_end").asText(), TIME_FORMATTER);
+
+        LessonType type = mapLessonType(firstFieldName(lessonNode.get("type")).orElse(""));
+        String classroom = firstFieldValue(lessonNode.get("room")).orElse("");
+        // teacher
+        String teacherUuid = null, teacherName = " ";
+        var lectorNode = lessonNode.get("lector");
+        if (lectorNode != null && lectorNode.fieldNames().hasNext()) {
+            var e = lectorNode.fields().next();
+            teacherUuid = e.getKey();
+            teacherName = e.getValue().asText();
+        }
+        UserEntity teacher;
+        if (teacherCache.containsKey(teacherUuid)) {
+            teacher = teacherCache.get(teacherUuid);
+        } else {
+            teacher = teacherService.findOrCreateTeacherAndAddGroup(teacherUuid, teacherName, groupEntity);
+        }
+        log.debug("Найдено расписание\nдля даты {}\nдля группы{}\nпрепод{}\nпредмет{}",
+                lessonDate,
+                groupEntity.getGroupName(),
+                teacher.getTeacherUuid(),
+                subjectName);
+        return ScheduleEntity.builder()
+                .group(groupEntity)
+                .lessonDate(LocalDate.parse(lessonDate, DateUtils.FORMATTER))
+                .lessonWeek(lessonWeek)
+                .subjectName(subjectName)
+                .lessonType(type)
+                .classroom(classroom)
+                .teacher(teacher)
+                .startTime(start)
+                .endTime(end)
+                .build();
     }
 
     private static LessonType mapLessonType(String badgeText) {

@@ -59,4 +59,20 @@ public class ScheduleEntity {
 
     @Column(name = "lesson_week")
     private Integer lessonWeek;
+
+    @Override
+    public String toString() {
+        return "ScheduleEntity{" +
+                "id=" + id +
+                ", group=" + group.getGroupName() +
+                ", subjectName='" + subjectName + '\'' +
+                ", lessonType=" + lessonType +
+                ", teacher=" + teacher.getTeacherUuid() +
+                ", classroom='" + classroom + '\'' +
+                ", lessonDate=" + lessonDate +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                ", lessonWeek=" + lessonWeek +
+                '}';
+    }
 }
