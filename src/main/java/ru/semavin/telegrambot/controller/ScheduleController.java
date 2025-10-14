@@ -30,30 +30,6 @@ import java.util.List;
 public class ScheduleController {
     //TODO GET /month GET /semestr (teacher)
     private final ScheduleService scheduleService;
-    private final ScheduleChangeService scheduleChangeService;
-    /**
-     * Получение расписания за указанную или текущую неделю.
-     *
-     * @param groupName Название группы (обязательный параметр).
-     * @param week Номер недели (необязательный, если не указан, будет выбрана текущая неделя).
-     * @return Список пар в формате {@link ScheduleDTO}.
-     */
-    @Operation(
-            summary = "Получение расписания за неделю",
-            description = "Позволяет получить расписание для указанной группы на выбранную неделю. "
-                    + "Если неделя не указана, используется текущая неделя."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Успешное получение расписания"),
-            @ApiResponse(responseCode = "404", description = "Расписание не найдено")
-    })
-    @GetMapping("/week")
-    public ResponseEntity<List<ScheduleDTO>> getSchedule(
-            @Parameter(description = "Название группы", required = true) @RequestParam String groupName,
-            @Parameter(description = "Номер недели (необязательный параметр)") @RequestParam(required = false) String week) {
-        return ResponseEntity.ok(scheduleService.getScheduleFromDataBase(groupName));
-    }
-
     /**
      * Получение расписания на текущий день.
      *
