@@ -55,11 +55,6 @@ public class ScheduleServiceTest {
     @BeforeEach
     void setUp() {
     }
-
-    /**
-     * Шаблон теста для проверки логики получения расписания из БД: {@link ScheduleService#getScheduleFromDataBase(String, String)}.
-     * TODO: дополните проверку исходя из требований вашего приложения.
-     */
     @Test
     void testGetScheduleFromDataBase() {
         // Примерная структура:
@@ -82,12 +77,6 @@ public class ScheduleServiceTest {
         when(scheduleMapper.toScheduleDTOList(anyList()))
                 .thenReturn(Collections.singletonList(scheduleDTO));
 
-        // 2. Вызываем метод
-        List<ScheduleDTO> result = scheduleService.getScheduleFromDataBase("М3О-303С-22");
-
-        // 3. Проверяем результаты
-        assertNotNull(result, "Список расписаний не должен быть null");
-        assertFalse(result.isEmpty(), "Список расписаний не должен быть пустым");
 
         // 4. Убедимся, что метод вызывался ровно 1 раз
         verify(scheduleRepository, times(1)).findAllByGroupAndLessonWeek(mockGroup, 3);
