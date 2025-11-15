@@ -24,11 +24,10 @@ public class DailyScheduleUpdateService {
     private final ScheduleService scheduleService;
 
     /**
-     * Метод, запускаемый ежедневно в 20:00 вечера.
+     * Метод, запускаемый ежедневно в 03:00 ночи.
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
      */
-//    @Scheduled(cron = "0 15 0 * * *")
-    @Scheduled(fixedRate = 60000 * 60 * 12)
+    @Scheduled(cron = "0 0 3 * * *", zone = "Europe/Moscow")
     @CacheEvict(value = "scheduleDay", allEntries = true)
     public void updateDailySchedules() {
         log.info("Начало ежедневного обновления расписания.");
