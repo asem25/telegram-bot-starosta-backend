@@ -7,14 +7,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
-import ru.semavin.telegrambot.services.ScheduleChangeService;
 import ru.semavin.telegrambot.services.schedules.ScheduleService;
+import ru.semavin.telegrambot.services.schedules.SchedulerCalendarISCService;
 import ru.semavin.telegrambot.utils.DateUtils;
 
 import java.util.List;
@@ -30,6 +31,8 @@ import java.util.List;
 public class ScheduleController {
     //TODO GET /month GET /semestr (teacher)
     private final ScheduleService scheduleService;
+    private final SchedulerCalendarISCService schedulerCalendarISCService;
+
     /**
      * Получение расписания на текущий день.
      *
@@ -54,7 +57,7 @@ public class ScheduleController {
      * Получение расписания на определенный день.
      *
      * @param groupName Название группы.
-     * @param date Дата в формате "dd.MM.yyyy".
+     * @param date      Дата в формате "dd.MM.yyyy".
      * @return Список пар на заданный день.
      */
     @Operation(
@@ -71,6 +74,7 @@ public class ScheduleController {
             @Parameter(description = "Дата в формате 'dd.MM.yyyy'", required = true) @RequestParam String date) {
         return ResponseEntity.ok(scheduleService.getScheduleForDay(groupName, date));
     }
+
     /**
      * Получение расписания на завтрашний день.
      *
@@ -100,6 +104,23 @@ public class ScheduleController {
     ) {
 
         return ResponseEntity.ok(scheduleService.findLesson(groupName, date, startTime));
+    }
+
+    @GetMapping(
+            value = "/semester/feed",
+            produces = "text/calendar; charset=UTF-8"
+    )
+    public ResponseEntity<String> getSemesterScheduleFeed(
+            @Parameter(description = "Название группы", required = true)
+            @RequestParam String groupName
+    ) {
+
+        String ics = schedulerCalendarISCService.getIscCalendarByGroupName(groupName);
+
+        return ResponseEntity
+                .ok()
+                .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
+                .body(ics);
     }
 
 }

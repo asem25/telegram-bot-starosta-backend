@@ -63,7 +63,10 @@ public class GroupEntity {
         return "GroupEntity{" +
                 "id=" + id +
                 ", groupName='" + groupName + '\'' +
-                ", starosta=" + starosta.getId() +
-                '}';
+                ", starosta=" + (
+                        starosta == null ?
+                "Не назначен" :
+                starosta.getId().toString())
+                + '}';
     }
 }
