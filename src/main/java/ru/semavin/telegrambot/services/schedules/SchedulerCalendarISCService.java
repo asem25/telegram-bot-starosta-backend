@@ -53,7 +53,7 @@ public class SchedulerCalendarISCService {
     private String buildCalendarISC(
             String groupName
     ) {
-        ZoneId zoneId = ZoneId.systemDefault();
+        ZoneId zoneId = ZoneId.of("Europe/Moscow");
         val schDtosList = scheduleService.getScheduleForGroup(groupName);
 
         StringBuilder sb = new StringBuilder();
