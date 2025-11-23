@@ -14,6 +14,9 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
     boolean existsByLessonDateAndGroup(LocalDate lessonDate, GroupEntity group);
 
     List<ScheduleEntity> findAllByLessonDateAndGroup(LocalDate lessonDate, GroupEntity group);
+
+    List<ScheduleEntity> findAllByGroup(GroupEntity group);
+
     /**
      * Удаляет все записи расписания для указанной группы
      *

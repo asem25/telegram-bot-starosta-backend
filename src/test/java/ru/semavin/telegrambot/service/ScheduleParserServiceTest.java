@@ -19,7 +19,7 @@ import ru.semavin.telegrambot.services.UserService;
 import ru.semavin.telegrambot.services.schedules.ScheduleParserService;
 import ru.semavin.telegrambot.services.schedules.SemesterService;
 
-import static org.assertj.core.api.Assertions.assertThat;
+
 import static org.mockito.Mockito.when;
 
 import java.time.format.DateTimeFormatter;
@@ -43,8 +43,8 @@ public class ScheduleParserServiceTest {
     @Mock
     private ObjectMapper mapper;
     // Используем реальный SemesterService с датой начала семестра
-    private SemesterService semesterService = new SemesterService("01.09.2025");
-    private SemesterService semesterServiceLater = new SemesterService("10.10.2025");
+    private SemesterService semesterService = new SemesterService("01.09.2025", "26.01.2026");
+    private SemesterService semesterServiceLater = new SemesterService("10.10.2025", "26.01.2026");
     private ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
     private UserEntity teacherNonEmpty;
     private UserEntity teacherEmpty;

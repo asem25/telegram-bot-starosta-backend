@@ -19,6 +19,8 @@ import java.time.temporal.ChronoUnit;
 public class SemesterService {
 
     private final LocalDate semesterStart;
+    private final LocalDate semesterEnd;
+
 
 
 
@@ -27,9 +29,11 @@ public class SemesterService {
      *
      * @param semesterStartStr Дата начала семестра, заданная в конфигурационном файле, например "10.02.2025".
      */
-    public SemesterService(@Value("${semester.start}") String semesterStartStr) {
+    public SemesterService(@Value("${semester.start}") String semesterStartStr,
+                           @Value("${semester.end}") String semesterEndStr) {
         // Определяем формат даты (например, "dd.MM.yyyy")
         this.semesterStart = LocalDate.parse(semesterStartStr, DateUtils.FORMATTER);
+        this.semesterEnd = LocalDate.parse(semesterEndStr, DateUtils.FORMATTER);
         log.info("Дата начала семестра установлена через конфигурацию: {}", this.semesterStart);
     }
 
@@ -98,4 +102,6 @@ public class SemesterService {
     public LocalDate getStartSemester() {
         return semesterStart;
     }
+
+    public LocalDate getEndSemester() {return  semesterEnd;}
 }

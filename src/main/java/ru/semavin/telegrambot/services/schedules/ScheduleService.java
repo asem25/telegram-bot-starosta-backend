@@ -1,6 +1,6 @@
 package ru.semavin.telegrambot.services.schedules;
 
-import jakarta.annotation.PostConstruct;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,8 +21,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 
 /**
  * Сервис для работы с расписанием.
@@ -80,6 +78,12 @@ public class ScheduleService {
         return mergeChanges(original, changes, parsingDate);
     }
 
+    public List<ScheduleDTO> getScheduleForGroup(String groupName) {
+        return scheduleMapper.toScheduleDTOList(
+                scheduleRepository.findAllByGroup(
+                        groupService.findEntityByName(groupName))
+        );
+    }
 
     private List<ScheduleDTO> mergeChanges(
             List<ScheduleDTO> originalSchedule,
