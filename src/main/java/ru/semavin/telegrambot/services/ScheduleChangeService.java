@@ -2,6 +2,7 @@ package ru.semavin.telegrambot.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.dto.ScheduleChangeDTO;
@@ -11,6 +12,7 @@ import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleChangeEntity;
 import ru.semavin.telegrambot.repositories.ScheduleChangeRepository;
 import ru.semavin.telegrambot.services.groups.GroupService;
+import ru.semavin.telegrambot.services.schedules.ScheduleControlSumParserService;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,7 +27,8 @@ public class ScheduleChangeService {
     @CacheEvict(value = "scheduleDay", key = "#groupName + '-' + #dto.oldLessonDate.format(T(ru.semavin.telegrambot.utils.DateUtils).FORMATTER)")
     public ScheduleChangeEntity createOrUpdate(ScheduleChangeDTO dto, String groupName) {
         GroupEntity group = groupService.findEntityByName(groupName);
-        ScheduleChangeEntity entity = changeRepository.findByGroupAndOldLessonDateAndOldStartTime(group, dto.getOldLessonDate(), dto.getOldStartTime())
+        ScheduleChangeEntity entity = changeRepository
+                .findByGroupAndOldLessonDateAndOldStartTime(group, dto.getOldLessonDate(), dto.getOldStartTime())
                 .orElse(new ScheduleChangeEntity());
 
         entity.setGroup(group);
@@ -38,19 +41,17 @@ public class ScheduleChangeService {
         entity.setOldStartTime(dto.getOldStartTime());
         entity.setOldEndTime(dto.getOldEndTime());
 
-        entity.setNewLessonDate(dto.getNewLessonDate());
-        entity.setNewStartTime(dto.getNewStartTime());
-        entity.setNewEndTime(dto.getNewEndTime());
+        val entityAfterControlSum = ScheduleControlSumParserService.fillCalculateSum(entity);
 
         entity.setDescription(dto.getDescription());
         entity.setDeleted(false);
 
-        return changeRepository.save(entity);
+        return changeRepository.save(entityAfterControlSum);
     }
 
-    public List<ScheduleChangeEntity> getChangesForDay(String groupName, LocalDate date) {
+    public List<ScheduleChangeEntity> getChangesByGroup(String groupName) {
         GroupEntity group = groupService.findEntityByName(groupName);
-        return changeRepository.findAllByGroupAndOldLessonDate(group, date);
+        return changeRepository.findAllByGroup(group);
     }
 
     public ScheduleChangeForEveryDayCheckDTO getChangesDtoForDay(String groupName, LocalDate date) {
@@ -107,7 +108,9 @@ public class ScheduleChangeService {
         entity.setDescription(dto.getDescription());
         entity.setDeleted(true);
 
-        changeRepository.save(entity);
+        val entityAfterControlSum = ScheduleControlSumParserService.fillCalculateSum(entity);
+
+        changeRepository.save(entityAfterControlSum);
     }
 
 }

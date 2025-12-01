@@ -1,7 +1,10 @@
 package ru.semavin.telegrambot.models;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import ru.semavin.telegrambot.models.enums.LessonType;
 
 import java.time.LocalDate;
@@ -59,6 +62,9 @@ public class ScheduleEntity {
 
     @Column(name = "lesson_week")
     private Integer lessonWeek;
+
+    @Column(name = "control_sum")
+    private String controlSum;
 
     @Override
     public String toString() {

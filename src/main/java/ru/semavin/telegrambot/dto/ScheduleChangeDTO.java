@@ -27,5 +27,7 @@ public class ScheduleChangeDTO {
     private LocalTime newStartTime;
     private LocalTime newEndTime;
 
+    private String controlSum;
+
     private String description;
 }

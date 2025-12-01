@@ -65,7 +65,10 @@ public class ScheduleParserService {
         }
     }
 
-    private List<ScheduleEntity> extractScheduleFromJson(GroupEntity groupEntity, JsonNode rootNode, LocalDate semesterStart, Map<String, UserEntity> teacherCache) {
+    private List<ScheduleEntity> extractScheduleFromJson(GroupEntity groupEntity,
+                                                         JsonNode rootNode,
+                                                         LocalDate semesterStart,
+                                                         Map<String, UserEntity> teacherCache) {
         List<CompletableFuture<List<ScheduleEntity>>> tasks =
                 streamFields(rootNode)
                         .filter(e -> !"group".equals(e.getKey()))
@@ -104,12 +107,16 @@ public class ScheduleParserService {
 
     private Optional<String> firstFieldName(JsonNode n) {
         var it = n != null ? n.fieldNames() : null;
-        return (it != null && it.hasNext()) ? Optional.ofNullable(it.next()) : Optional.empty();
+        return (it != null && it.hasNext()) ?
+                Optional.ofNullable(it.next()) :
+                Optional.empty();
     }
 
     private Optional<String> firstFieldValue(JsonNode n) {
         var it = n != null ? n.fields() : null;
-        return (it != null && it.hasNext()) ? Optional.ofNullable(it.next().getValue().asText()) : Optional.empty();
+        return (it != null && it.hasNext()) ?
+                Optional.ofNullable(it.next().getValue().asText()) :
+                Optional.empty();
     }
 
     private static Stream<Map.Entry<String, JsonNode>> streamFields(JsonNode node) {
@@ -200,6 +207,18 @@ public class ScheduleParserService {
                 groupEntity.getGroupName(),
                 teacher.getTeacherUuid(),
                 subjectName);
+        return ScheduleControlSumParserService.fillCalculateSum(
+                buildScheduleEntity(groupEntity,
+                lessonDate,
+                lessonWeek,
+                subjectName,
+                type,
+                classroom,
+                teacher,
+                start, end));
+    }
+
+    private static ScheduleEntity buildScheduleEntity(GroupEntity groupEntity, String lessonDate, int lessonWeek, String subjectName, LessonType type, String classroom, UserEntity teacher, LocalTime start, LocalTime end) {
         return ScheduleEntity.builder()
                 .group(groupEntity)
                 .lessonDate(LocalDate.parse(lessonDate, DateUtils.FORMATTER))

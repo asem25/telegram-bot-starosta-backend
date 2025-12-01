@@ -1,9 +1,9 @@
 package ru.semavin.telegrambot.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -40,6 +40,9 @@ public class ScheduleDTO {
 
     @Schema(description = "Время начала занятия", example = "10:00")
     private LocalTime startTime;
+
+    @Schema(description = "Контрольная сумма занятия")
+    private String controlSum;
 
     @Schema(description = "Время окончания занятия", example = "11:30")
     private LocalTime endTime;

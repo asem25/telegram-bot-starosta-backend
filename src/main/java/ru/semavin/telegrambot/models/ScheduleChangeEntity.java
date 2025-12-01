@@ -35,6 +35,9 @@ public class ScheduleChangeEntity {
 
     private String description;
     private boolean deleted;
+
+    private String oldControlSum;
+
     @ManyToOne
     @JoinColumn(name = "group_id")
     private GroupEntity group;

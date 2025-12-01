@@ -6,13 +6,9 @@ import lombok.val;
 import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.HexFormat;
 
 @Service
 @Slf4j
@@ -74,20 +70,20 @@ public class SchedulerCalendarISCService {
     }
 
     private void processBuildForSchedule(String groupName, ScheduleDTO dto, ZoneId zoneId, StringBuilder sb) {
-        LocalDateTime start = LocalDateTime.of(dto.getLessonDate(), dto.getStartTime());
-        LocalDateTime end = LocalDateTime.of(dto.getLessonDate(), dto.getEndTime());
+        val start = LocalDateTime.of(dto.getLessonDate(), dto.getStartTime());
+        val end = LocalDateTime.of(dto.getLessonDate(), dto.getEndTime());
 
-        String dtStart = start.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
-        String dtEnd = end.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
+        val dtStart = start.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
+        val dtEnd = end.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
 
-        String uid = buildStableUid(groupName, dto);
+        val uid = dto.getControlSum();
 
         String summary = dto.getSubjectName();
         if (dto.getLessonType() != null && !dto.getLessonType().isBlank()) {
             summary += " (" + getStringType(dto) + ")";
         }
 
-        StringBuilder description = new StringBuilder("Группа: " + groupName);
+        val description = new StringBuilder("Группа: " + groupName);
         if (dto.getTeacherName() != null && !dto.getTeacherName().isBlank()) {
             description.append("\nПреподаватель: ").append(dto.getTeacherName());
         }
@@ -114,22 +110,6 @@ public class SchedulerCalendarISCService {
             case "EXAM" -> "ЭКЗ";
             default -> "Не определено";
         };
-    }
-
-    private String buildStableUid(String groupName, ScheduleDTO dto) {
-        String base = groupName + "|" +
-                dto.getLessonDate() + "|" +
-                dto.getStartTime() + "|" +
-                dto.getSubjectName();
-
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] digest = md.digest(base.getBytes(StandardCharsets.UTF_8));
-            String hash = HexFormat.of().formatHex(digest);
-            return "lesson-" + hash + telegram_tag;
-        } catch (NoSuchAlgorithmException e) {
-            return "lesson-" + base.hashCode() + telegram_tag;
-        }
     }
 
     private String escapeText(String text) {

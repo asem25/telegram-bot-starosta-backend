@@ -114,7 +114,7 @@ public class ScheduleController {
             @Parameter(description = "Название группы", required = true)
             @RequestParam String groupName
     ) {
-
+        log.info("Пришел запрос на получение календаря для группы {}", groupName);
         String ics = schedulerCalendarISCService.getIscCalendarByGroupName(groupName);
 
         return ResponseEntity
