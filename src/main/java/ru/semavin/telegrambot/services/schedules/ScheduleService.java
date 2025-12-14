@@ -118,89 +118,58 @@ public class ScheduleService {
     private List<ScheduleDTO> mergeChanges(
             List<ScheduleDTO> originalSchedule,
             List<ScheduleChangeEntity> changes,
-            LocalDate parsingDate
+            LocalDate targetDate
     ) {
-        Map<String, ScheduleChangeEntity> controlSums =
-                changes.stream().collect(
-                        Collectors.toMap(
-                                ScheduleChangeEntity::getOldControlSum,
-                                obj -> obj
-                        )
-                );
         List<ScheduleDTO> merged = new ArrayList<>();
 
-        changes.forEach(change -> {
-            //todo newLessonDate/startTime/endTime не заполняются
-            if (change.getNewLessonDate() != null &&
-            parsingDate.equals(change.getNewLessonDate())) {
-
-                val newdto = ScheduleDTO.builder()
-                        .classroom(change.getClassroom())
-                        .controlSum(change.getOldControlSum())
-                        .teacherName(change.getTeacherName())
-                        .subjectName(change.getSubjectName())
-                        .lessonType(change.getLessonType())
-                        .groupName(change.getGroup().getGroupName())
-                        .lessonDate(change.getNewLessonDate())
-                        .build();
-
-                if (change.getNewEndTime() != null) {
-                    newdto.setEndTime(change.getNewEndTime());
-                } else {
-                    newdto.setEndTime(change.getOldEndTime());
-                }
-
-                if (change.getNewStartTime() != null) {
-                    newdto.setStartTime(change.getNewStartTime());
-                } else {
-                    newdto.setStartTime(change.getOldStartTime());
-                }
-
-                if (change.getDescription() != null) {
-                    newdto.setDescription(change.getDescription());
-                }
-
-                merged.add(newdto);
-            }
-        });
-
-        //todo если перенести пару на субботу, но в субботу нет пар кроме перенесенной, то пара не отобразиться
         for (ScheduleDTO dto : originalSchedule) {
-            val controlSum = dto.getControlSum();
-            if (controlSums.containsKey(controlSum)) {
-                val change = controlSums.get(controlSum);
+            ScheduleChangeEntity ch = changes.stream()
+                    .filter(change ->
+                            change.getOldLessonDate().equals(dto.getLessonDate()) &&
+                                    change.getOldStartTime().equals(dto.getStartTime()) &&
+                                    change.getSubjectName().equalsIgnoreCase(dto.getSubjectName())
+                    )
+                    .findFirst()
+                    .orElse(null);
 
-                if (change.isDeleted()) {
+            if (ch != null) {
+                if (ch.isDeleted()) {
                     continue;
                 }
 
-                if (change.getNewLessonDate() != null) {
-                    dto.setLessonDate(change.getNewLessonDate());
+                LocalDate newDate = ch.getNewLessonDate() != null ? ch.getNewLessonDate() : dto.getLessonDate();
+                if (!newDate.equals(targetDate)) {
+                    continue;
                 }
 
-                if (change.getNewStartTime() != null) {
-                    dto.setStartTime(change.getNewStartTime());
-                }
-
-                if (change.getNewEndTime() != null) {
-                    dto.setEndTime(change.getNewEndTime());
-                }
-
-                if (change.getDescription() != null) {
-                    dto.setDescription(change.getDescription());
-                }
-
-                if (!change.getClassroom().equals(dto.getClassroom())) {
-                    dto.setClassroom(change.getClassroom());
-                }
+                dto.setLessonDate(newDate);
+                if (ch.getNewStartTime() != null) dto.setStartTime(ch.getNewStartTime());
+                if (ch.getNewEndTime() != null) dto.setEndTime(ch.getNewEndTime());
+                dto.setDescription(ch.getDescription());
             }
 
             merged.add(dto);
         }
 
+        changes.stream()
+                .filter(ch -> !ch.isDeleted()
+                        && targetDate.equals(ch.getNewLessonDate())
+                        && !targetDate.equals(ch.getOldLessonDate()))
+                .forEach(ch -> {
+                    ScheduleDTO dto = ScheduleDTO.builder()
+                            .groupName(originalSchedule.get(0).getGroupName())
+                            .subjectName(ch.getSubjectName())
+                            .lessonDate(ch.getNewLessonDate())
+                            .startTime(ch.getNewStartTime())
+                            .endTime(ch.getNewEndTime())
+                            .description(ch.getDescription())
+                            .build();
+                    merged.add(dto);
+                });
+
+        merged.sort(Comparator.comparing(ScheduleDTO::getStartTime));
         return merged;
     }
-
     public ScheduleDTO findLesson(String groupName, String date, String startTime) {
         GroupEntity group = groupService.findEntityByName(groupName);
         LocalDate lessonDate = semesterService.getFormatterDate(date);
