@@ -3,6 +3,7 @@ package ru.semavin.telegrambot.repositories;
 import org.springframework.data.jpa.repository.JpaRepository;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
+import ru.semavin.telegrambot.models.UserEntity;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -17,6 +18,8 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
 
     List<ScheduleEntity> findAllByGroup(GroupEntity group);
 
+    List<ScheduleEntity> findAllByTeacher(UserEntity teacher);
+
     /**
      * Удаляет все записи расписания для указанной группы
      *
@@ -26,4 +29,6 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
     void deleteAllByGroup(GroupEntity group);
 
     ScheduleEntity findByGroupAndLessonDateAndStartTime(GroupEntity group, LocalDate lessonDate, LocalTime startTime);
+
+    void deleteAllByTeacher(UserEntity teacher);
 }

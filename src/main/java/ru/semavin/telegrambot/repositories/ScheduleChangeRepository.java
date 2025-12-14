@@ -14,6 +14,6 @@ public interface ScheduleChangeRepository extends JpaRepository<ScheduleChangeEn
 
     List<ScheduleChangeEntity> findAllByGroupAndOldLessonDate(GroupEntity group, LocalDate date);
 
-    List<ScheduleChangeEntity> findAllByGroupAndOldLessonDateBetween(GroupEntity group, LocalDate from, LocalDate to);
+    List<ScheduleChangeEntity> findAllByGroup(GroupEntity group);
 }
 

@@ -114,11 +114,27 @@ public class ScheduleController {
             @Parameter(description = "Название группы", required = true)
             @RequestParam String groupName
     ) {
-
+        log.info("Пришел запрос на получение календаря для группы {}", groupName);
         String ics = schedulerCalendarISCService.getIscCalendarByGroupName(groupName);
 
         return ResponseEntity
                 .ok()
+                .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
+                .body(ics);
+    }
+
+    @GetMapping(
+            value = "/semester/feed/teacher",
+            produces = "text/calendar; charset=UTF-8"
+    )
+    public ResponseEntity<String> getTeacherScheduleFeed(
+            @Parameter(description = "UUID преподавателя")
+            @RequestParam String uuidTeacher
+    ) {
+        log.info("Пришел запрос на получение расписания для преподавателя : {}", uuidTeacher);
+
+        String ics = schedulerCalendarISCService.getIscCalendarByUuidTeacher(uuidTeacher);
+        return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
                 .body(ics);
     }
