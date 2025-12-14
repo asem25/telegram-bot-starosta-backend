@@ -130,7 +130,7 @@ public class SchedulerCalendarISCService {
 
         sb.append(SUMMARY).append(escapeText("♻️ Расписание обновлено")).append(CRLF);
         sb.append(DESCRIPTION).append(escapeText("Последнее обновление: " + updatedAt.format(
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HHmm")))).append(CRLF);
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))).append(CRLF);
         sb.append(END_VEVENT).append(CRLF);
     }
 
