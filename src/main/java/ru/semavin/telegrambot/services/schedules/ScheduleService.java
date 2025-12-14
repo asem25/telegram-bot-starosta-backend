@@ -150,6 +150,9 @@ public class ScheduleService {
 
             merged.add(dto);
         }
+        if (originalSchedule.isEmpty()) {
+            return List.of();
+        }
 
         changes.stream()
                 .filter(ch -> !ch.isDeleted()
