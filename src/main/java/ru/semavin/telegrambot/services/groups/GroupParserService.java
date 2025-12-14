@@ -1,7 +1,6 @@
 package ru.semavin.telegrambot.services.groups;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +25,9 @@ public class GroupParserService {
 
         jsonListOfAllGroups.forEach(jsonElement -> {
             JsonObject jsonObject = jsonElement.getAsJsonObject();
-            if (jsonObject.get("fac").getAsString().equalsIgnoreCase("Институт №3")) {
-                groups.add(GroupEntity.builder()
-                        .groupName(jsonObject.get("name").getAsString())
-                        .build());
-            }
+            groups.add(GroupEntity.builder()
+                    .groupName(jsonObject.get("name").getAsString())
+                    .build());
         });
 
         return groups;

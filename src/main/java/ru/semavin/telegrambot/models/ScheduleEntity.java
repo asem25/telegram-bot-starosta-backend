@@ -9,6 +9,7 @@ import ru.semavin.telegrambot.models.enums.LessonType;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * Сущность расписания (schedule).
@@ -65,6 +66,9 @@ public class ScheduleEntity {
 
     @Column(name = "control_sum")
     private String controlSum;
+
+    @Column(name = "groupsList") //только для преподавателей
+    private List<String> groupsList;
 
     @Override
     public String toString() {

@@ -44,6 +44,9 @@ public class ScheduleDTO {
     @Schema(description = "Контрольная сумма занятия")
     private String controlSum;
 
+    @Schema(description = "Список групп для преподавателя")
+    private String groups;
+
     @Schema(description = "Время окончания занятия", example = "11:30")
     private LocalTime endTime;
 }

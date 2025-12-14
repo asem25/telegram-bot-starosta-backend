@@ -29,6 +29,9 @@ public class SchedulerCalendarISCService {
     private static final String PRODID = "PRODID:-//TelegramBot-Starosta//SemesterSchedule//RU";
     private static final String CALSCALE = "CALSCALE:GREGORIAN";
     private static final String CALNAME = "X-WR-CALNAME:";
+    private static final String LAST_MODIFIED = "LAST-MODIFIED:";
+    private static final String SEQUENCE = "SEQUENCE:";
+    private static final String UPDATE_UID_PREFIX = "meta-update-teacher-";
     private static final String telegram_tag = "@telegrambot-starosta";
     public static final String CRLF = "\r\n";
 
@@ -38,6 +41,99 @@ public class SchedulerCalendarISCService {
 
     private static final DateTimeFormatter ICS_DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
+
+    public String getIscCalendarByUuidTeacher(String uuidTeacher) {
+        val ics = buildCalendarISCForTeacher(uuidTeacher);
+        log.debug("Сформирован .ics за семестр для преподавателя {}. Длина файла: {} символов",
+                uuidTeacher, ics.length());
+        return ics;
+    }
+
+    private String buildCalendarISCForTeacher(String uuidTeacher) {
+        ZoneId zoneId = ZoneId.of("Europe/Moscow");
+
+        val schDtosList = scheduleService.getScheduleForTeacher(uuidTeacher);
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(VCALENDAR).append(CRLF);
+        sb.append(VERSION).append(CRLF);
+        sb.append(PRODID).append(CRLF);
+        sb.append(CALSCALE).append(CRLF);
+        sb.append(CALNAME).append(escapeText("Расписание преподавателя МАИ")).append(CRLF);
+
+        appendUpdateMarker(sb, zoneId, uuidTeacher, scheduleService.getLastUpdateTeacher());
+
+        schDtosList.forEach(dto ->
+                processBuildForScheduleTeacher(dto, zoneId, sb)
+        );
+
+        sb.append(END_VCALENDAR).append(CRLF);
+
+        return sb.toString();
+    }
+
+    private void processBuildForScheduleTeacher(ScheduleDTO dto, ZoneId zoneId, StringBuilder sb) {
+        val start = LocalDateTime.of(dto.getLessonDate(), dto.getStartTime());
+        val end = LocalDateTime.of(dto.getLessonDate(), dto.getEndTime());
+
+        val dtStart = start.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
+        val dtEnd = end.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
+
+        val uid = dto.getControlSum();
+
+        String summary = dto.getSubjectName();
+        if (dto.getLessonType() != null && !dto.getLessonType().isBlank()) {
+            summary += " (" + getStringType(dto) + ")";
+        }
+
+        String description = "Группы: " + dto.getGroups();
+
+        sb.append(BEGIN_VEVENT).append(CRLF);
+        sb.append(DTSTART_TZID).append(zoneId).append(":").append(dtStart).append(CRLF);
+        sb.append(DTEND_TZID).append(zoneId).append(":").append(dtEnd).append(CRLF);
+        sb.append(UID).append(uid).append(CRLF);
+        sb.append(SUMMARY).append(escapeText(summary)).append(CRLF);
+
+        if (dto.getClassroom() != null && !dto.getClassroom().isBlank()) {
+            sb.append(LOCATION).append(escapeText(dto.getClassroom())).append(CRLF);
+        }
+
+        sb.append(DESCRIPTION).append(escapeText(description)).append(CRLF);
+        sb.append(END_VEVENT).append(CRLF);
+    }
+
+    /**
+     * Добавляет в календарь специальное событие "Расписание обновлено".
+     */
+    private void appendUpdateMarker(StringBuilder sb, ZoneId zoneId, String key,
+                                    LocalDateTime updatedAt) {
+        if (updatedAt == null) {
+            return;
+        }
+
+        String uid = UPDATE_UID_PREFIX + key + "@telegrambot-starosta";
+
+        val start = updatedAt;
+        val end = updatedAt.plusMinutes(1);
+
+        val dtStart = start.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
+        val dtEnd = end.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
+
+        sb.append(BEGIN_VEVENT).append(CRLF);
+        sb.append(DTSTART_TZID).append(zoneId).append(":").append(dtStart).append(CRLF);
+        sb.append(DTEND_TZID).append(zoneId).append(":").append(dtEnd).append(CRLF);
+        sb.append(UID).append(uid).append(CRLF);
+
+        sb.append(LAST_MODIFIED).append(updatedAt.atZone(zoneId).withZoneSameInstant(ZoneId.of("UTC"))
+                .format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"))).append(CRLF);
+        sb.append(SEQUENCE).append(1).append(CRLF);
+
+        sb.append(SUMMARY).append(escapeText("♻️ Расписание обновлено")).append(CRLF);
+        sb.append(DESCRIPTION).append(escapeText("Последнее обновление: " + updatedAt.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HHmm")))).append(CRLF);
+        sb.append(END_VEVENT).append(CRLF);
+    }
+
 
     public String getIscCalendarByGroupName(String groupName) {
         val ics = buildCalendarISC(groupName);
@@ -59,6 +155,8 @@ public class SchedulerCalendarISCService {
         sb.append(PRODID).append(CRLF);
         sb.append(CALSCALE).append(CRLF);
         sb.append(CALNAME).append(escapeText("Расписание " + groupName + " (семестр)")).append(CRLF);
+
+        appendUpdateMarker(sb, zoneId, groupName, scheduleService.getLastUpdateStudents());
 
         schDtosList.forEach(dto ->
                 processBuildForSchedule(groupName, dto, zoneId, sb)
@@ -123,5 +221,4 @@ public class SchedulerCalendarISCService {
                 .replace(CRLF, "\\n")
                 .replace("\n", "\\n");
     }
-
 }

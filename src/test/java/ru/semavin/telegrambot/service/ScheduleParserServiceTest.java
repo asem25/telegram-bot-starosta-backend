@@ -1,5 +1,6 @@
 package ru.semavin.telegrambot.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +17,7 @@ import ru.semavin.telegrambot.models.UserEntity;
 import ru.semavin.telegrambot.models.enums.LessonType;
 import ru.semavin.telegrambot.models.enums.UserRole;
 import ru.semavin.telegrambot.services.UserService;
+import ru.semavin.telegrambot.services.groups.GroupService;
 import ru.semavin.telegrambot.services.schedules.ScheduleParserService;
 import ru.semavin.telegrambot.services.schedules.SemesterService;
 
@@ -36,6 +38,9 @@ import static org.mockito.Mockito.*;
 public class ScheduleParserServiceTest {
     @Mock
     private UserService teacherService;
+
+    @Mock
+    private GroupService groupService;
 
     @Mock
     private RestTemplate restTemplate;
@@ -63,6 +68,7 @@ public class ScheduleParserServiceTest {
     private String fakeJsonSuccessForEmpty;
     private String fakeJsonSuccessWithoutDoublePairs;
     private String fakeJsonSuccessWithDoublePairs;
+    private String fakeJsonSuccessForTeacher;
     private String FIRSTPAIR_START = "09:00";
     private String FIRSTPAIR_END = "10:30";
     private String SECONDPAIR_START = "10:45";
@@ -75,6 +81,64 @@ public class ScheduleParserServiceTest {
 
     @BeforeEach
     public void setUp() {
+        fakeJsonSuccessForTeacher = """
+                {
+                   "name": "Иванов Иван Иванович",
+                   "groups": {
+                     "М3О-304С-23": 21,
+                     "М3О-306С-23": 38,
+                     "М3О-303С-23": 21,
+                     "М3О-301С-23": 27,
+                     "М3О-302БВ-23": 27,
+                     "М3О-305БВ-23": 38,
+                     "М7О-310БВ-23": 25,
+                     "М9О-307БВ-23": 27,
+                     "М3О-403БВ-22": 19,
+                     "М3О-404С-22": 15,
+                     "М3О-503С-21": 55,
+                     "М3О-504С-21": 54,
+                     "М3О-505С-21": 54
+                   },
+                   "schedule": {
+                            "01.09.2025": {
+                               "date": "20250901",
+                               "day": "Пн",
+                                     "pairs": {
+                                       "9:00:00": {
+                                         "time_start": "9:00:00",
+                                         "time_end": "10:30:00",
+                                         "name": "Первая пара",
+                                         "groups": [
+                                           "М3О-306С-22",
+                                           "М3О-303С-22"
+                                         ],
+                                         "types": [
+                                           "ЛК"
+                                         ],
+                                         "rooms": {
+                                           "c493ff2a-07bb-11e0-bf99-003048ccec9b": "3-404"
+                                         }
+                                       },
+                                       "13:00:00": {
+                                         "time_start": "13:00:00",
+                                         "time_end": "14:30:00",
+                                         "name": "Вторая пара",
+                                         "groups": [
+                                           "М3О-301БВ-23",
+                                           "М3О-30БВ-24"
+                                         ],
+                                         "types": [
+                                           "ЛК"
+                                         ],
+                                         "rooms": {
+                                           "c493ff2a-07bb-11e0-bf99-003048ccec9b": "3-404"
+                                         }
+                                       }
+                                     }
+                            }
+        
+                 }
+                """;
         fakeJsonSuccessWithDoublePairs = """
                 {
                   "08.09.2025": {
@@ -348,8 +412,10 @@ public class ScheduleParserServiceTest {
                   }
                 }
                 """;
-        scheduleParserService = new ScheduleParserService(semesterService, teacherService, restTemplate, mapper, executorService);
-        scheduleParserServiceWithSemesterStartAfterLessons = new ScheduleParserService(semesterServiceLater, teacherService, restTemplate, mapper, executorService);
+        scheduleParserService = new ScheduleParserService(semesterService,groupService,
+                teacherService, restTemplate, mapper, executorService);
+        scheduleParserServiceWithSemesterStartAfterLessons = new ScheduleParserService(semesterServiceLater,
+                groupService, teacherService, restTemplate, mapper, executorService);
         // Заменяем restTemplate внутри ScheduleParserService на наш мок
         ReflectionTestUtils.setField(scheduleParserService, "restTemplate", restTemplate);
         ReflectionTestUtils.setField(scheduleParserServiceWithSemesterStartAfterLessons, "restTemplate", restTemplate);
@@ -605,5 +671,17 @@ public class ScheduleParserServiceTest {
         List<ScheduleEntity> result = scheduleParserServiceWithSemesterStartAfterLessons.findScheduleByGroup(groupEntity);
 
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testParseJsonScheduleForTeacher() throws JsonProcessingException {
+        when(mapper.readTree(anyString())).thenReturn(new ObjectMapper().readTree(fakeJsonSuccessForTeacher));
+        when(restTemplate.getForObject(anyString(), eq(String.class)))
+                .thenReturn(fakeJsonSuccessForAnyOne);
+        when(teacherService.findTeacher(anyString())).thenReturn(teacherNavigation);
+
+        List<ScheduleEntity> result = scheduleParserService.getScheduleTeacherFromSite("1111");
+
+        assertFalse(result.isEmpty());
     }
 }
