@@ -25,9 +25,11 @@ public class GroupParserService {
 
         jsonListOfAllGroups.forEach(jsonElement -> {
             JsonObject jsonObject = jsonElement.getAsJsonObject();
-            groups.add(GroupEntity.builder()
-                    .groupName(jsonObject.get("name").getAsString())
-                    .build());
+            if (jsonObject.get("fac").getAsString().equalsIgnoreCase("Институт №3")) {
+                groups.add(GroupEntity.builder()
+                        .groupName(jsonObject.get("name").getAsString())
+                        .build());
+            }
         });
 
         return groups;

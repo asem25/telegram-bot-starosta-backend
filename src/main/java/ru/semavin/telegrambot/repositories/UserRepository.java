@@ -2,9 +2,7 @@ package ru.semavin.telegrambot.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import ru.semavin.telegrambot.models.UserEntity;
-import ru.semavin.telegrambot.models.enums.UserRole;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
@@ -17,6 +15,4 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     boolean existsByFirstNameAndLastNameAndPatronymicIgnoreCase(String firstName, String lastName, String patronymic);
 
     Optional<UserEntity> findByTeacherUuid(String teacherUuid);
-
-    List<UserEntity> findAllByRole(UserRole role);
 }
