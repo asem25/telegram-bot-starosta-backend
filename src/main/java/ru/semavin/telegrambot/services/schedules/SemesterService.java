@@ -22,6 +22,8 @@ public class SemesterService {
     private final LocalDate semesterEnd;
 
 
+
+
     /**
      * Конструктор, принимающий дату начала семестра в виде строки из конфигурации.
      *
@@ -55,7 +57,6 @@ public class SemesterService {
     public LocalDate getFormatterDate(String date) {
         return LocalDate.parse(date, DateUtils.FORMATTER);
     }
-
     /**
      * Вычисляет номер учебной недели для заданной даты.
      * Если переданная дата меньше даты начала семестра, возвращается "0". Если дата приходится на воскресенье, неделя увеличивается на 1.
@@ -67,7 +68,6 @@ public class SemesterService {
     public String getWeekForDate(String dateStr) {
         return getWeekForInputDate(dateStr);
     }
-
     /**
      * Вычисляет номер учебной недели для заданной даты.
      * Если переданная дата меньше даты начала семестра, возвращается "0". Если дата приходится на воскресенье, неделя увеличивается на 1.
@@ -103,7 +103,5 @@ public class SemesterService {
         return semesterStart;
     }
 
-    public LocalDate getEndSemester() {
-        return semesterEnd;
-    }
+    public LocalDate getEndSemester() {return  semesterEnd;}
 }

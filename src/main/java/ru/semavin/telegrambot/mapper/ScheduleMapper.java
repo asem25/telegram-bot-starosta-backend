@@ -14,14 +14,7 @@ public interface ScheduleMapper {
 
     @Mapping(target = "id", source = "id")
     @Mapping(target = "groupName", source = "group.groupName")
-    @Mapping(target = "teacherName", expression = "java(entity.getTeacher().getFirstName() + " +
-            "\" \" + entity.getTeacher().getPatronymic() +" +
-            " \" \" + entity.getTeacher().getLastName())")
-    @Mapping(
-            target = "groups",
-            expression = "java(entity.getGroupsList() == null ? \"\" : " +
-                    "entity.getGroupsList().stream().collect(java.util.stream.Collectors.joining(\", \"))) "
-    )
+    @Mapping(target = "teacherName", expression = "java(entity.getTeacher().getFirstName() + \" \" + entity.getTeacher().getPatronymic() + \" \" + entity.getTeacher().getLastName())")
     ScheduleDTO toScheduleDTO(ScheduleEntity entity);
 
     List<ScheduleDTO> toScheduleDTOList(List<ScheduleEntity> entities);

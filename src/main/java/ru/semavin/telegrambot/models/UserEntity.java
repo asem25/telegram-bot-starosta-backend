@@ -96,7 +96,9 @@ public class UserEntity {
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", role=" + role +
+                ", group=" + group.getGroupName() +
                 ", teacherUuid='" + teacherUuid + '\'' +
+                ", teachingGroups=" + teachingGroups +
                 '}';
     }
 }

@@ -16,7 +16,6 @@ import ru.semavin.telegrambot.utils.ExceptionFabric;
 import ru.semavin.telegrambot.utils.exceptions.UserNotFoundException;
 import ru.semavin.telegrambot.utils.exceptions.UserWithTelegramIdAlreadyExistsException;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -67,10 +66,6 @@ public class UserService {
                 .orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)));
     }
 
-    public UserEntity update(UserEntity user) {
-        return userRepository.save(user);
-    }
-
     @Transactional
     public UserEntity findOrCreateTeacherAndAddGroup(String teacherUuid, String teacherName, GroupEntity group) {
         if (teacherUuid.equals("00000000-0000-0000-0000-000000000000")) {
@@ -93,7 +88,10 @@ public class UserService {
 
         Optional<UserEntity> teacher = userRepository.findByFirstNameAndLastNameAndPatronymicIgnoreCase(firstName, lastName, patronymic);
         if (teacher.isPresent()) {
-            teacher.get().getTeachingGroups().add(group);
+            if (!teacher.get().getTeachingGroups().contains(group)) {
+                teacher.get().getTeachingGroups().add(group);
+            }
+            ;
             return teacher.get();
         }
 
@@ -111,12 +109,7 @@ public class UserService {
     }
 
     public UserEntity findTeacher(String teacherUuid) {
-        return userRepository.findByTeacherUuid(teacherUuid)
-                .orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class,
-                        ExceptionMessages.USER_NOT_FOUND));
+        return null;
     }
 
-    public List<UserEntity> findAllByRole(UserRole role) {
-        return userRepository.findAllByRole(role);
-    }
 }
