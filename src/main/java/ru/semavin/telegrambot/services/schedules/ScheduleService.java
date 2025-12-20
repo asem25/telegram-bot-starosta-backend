@@ -85,7 +85,7 @@ public class ScheduleService {
         List<ScheduleDTO> original = scheduleMapper.toScheduleDTOList(updatedSchedule);
         List<ScheduleChangeEntity> changes = scheduleChangeService.getChangesByGroup(groupName);
 
-        return mergeChanges(original, changes, parsingDate);
+        return original;
     }
 
     public List<ScheduleDTO> getScheduleForGroup(String groupName) {
