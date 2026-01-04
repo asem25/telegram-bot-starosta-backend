@@ -209,16 +209,19 @@ public class ScheduleParserService {
                 subjectName);
         return ScheduleControlSumParserService.fillCalculateSum(
                 buildScheduleEntity(groupEntity,
-                lessonDate,
-                lessonWeek,
-                subjectName,
-                type,
-                classroom,
-                teacher,
-                start, end));
+                        lessonDate,
+                        lessonWeek,
+                        subjectName,
+                        type,
+                        classroom,
+                        teacher,
+                        start, end));
     }
 
-    private static ScheduleEntity buildScheduleEntity(GroupEntity groupEntity, String lessonDate, int lessonWeek, String subjectName, LessonType type, String classroom, UserEntity teacher, LocalTime start, LocalTime end) {
+    private static ScheduleEntity buildScheduleEntity(GroupEntity groupEntity, String lessonDate,
+                                                      int lessonWeek, String subjectName,
+                                                      LessonType type, String classroom,
+                                                      UserEntity teacher, LocalTime start, LocalTime end) {
         return ScheduleEntity.builder()
                 .group(groupEntity)
                 .lessonDate(LocalDate.parse(lessonDate, DateUtils.FORMATTER))

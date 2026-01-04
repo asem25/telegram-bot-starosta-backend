@@ -50,7 +50,7 @@ public class SchedulerCalendarISCService {
             String groupName
     ) {
         ZoneId zoneId = ZoneId.of("Europe/Moscow");
-        val schDtosList = scheduleService.getScheduleForGroup(groupName);
+        val schDtosList = scheduleService.getScheduleForISC(groupName);
 
         StringBuilder sb = new StringBuilder();
 
@@ -86,6 +86,9 @@ public class SchedulerCalendarISCService {
         val description = new StringBuilder("Группа: " + groupName);
         if (dto.getTeacherName() != null && !dto.getTeacherName().isBlank()) {
             description.append("\nПреподаватель: ").append(dto.getTeacherName());
+            if (dto.getDescription() != null && !dto.getDescription().isBlank()) {
+                description.append("\nКомментарий: ").append(dto.getDescription());
+            }
         }
 
         sb.append(BEGIN_VEVENT).append(CRLF);
