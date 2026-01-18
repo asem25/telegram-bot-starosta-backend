@@ -25,13 +25,16 @@ public class GroupParserService {
 
         jsonListOfAllGroups.forEach(jsonElement -> {
             JsonObject jsonObject = jsonElement.getAsJsonObject();
-            if (jsonObject.get("fac").getAsString().equalsIgnoreCase("Институт №3")) {
+            String fac = jsonObject.get("fac").getAsString();
+            if (fac.equalsIgnoreCase("Институт №3")
+                    || fac.equalsIgnoreCase("Институт №9")
+                    || fac.equalsIgnoreCase("Институт №7")) {
                 groups.add(GroupEntity.builder()
                         .groupName(jsonObject.get("name").getAsString())
                         .build());
             }
         });
-
+        log.info("Найдено {} групп", groups.size());
         return groups;
     }
 

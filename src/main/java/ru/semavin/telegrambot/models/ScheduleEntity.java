@@ -29,7 +29,7 @@ public class ScheduleEntity {
     /**
      * Ссылка на группу, к которой относится данное расписание.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "group_id", referencedColumnName = "id")
     private GroupEntity group;
 
@@ -44,7 +44,7 @@ public class ScheduleEntity {
      * Ссылка на преподавателя (UserEntity с ролью TEACHER).
      * Для старых записей ранее использовавшихся поле teacher_name, потребуется миграция.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "teacher_id", referencedColumnName = "id")
     private UserEntity teacher;
 

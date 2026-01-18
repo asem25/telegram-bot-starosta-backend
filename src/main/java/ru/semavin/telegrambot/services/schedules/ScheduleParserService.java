@@ -47,7 +47,7 @@ public class ScheduleParserService {
 
     public List<ScheduleEntity> findScheduleByGroup(GroupEntity groupEntity) {
         String jsonString = getJsonOfScheduleStudentWithGroupName(groupEntity.getGroupName());
-        log.info("JSON для группы {} получен", groupEntity.getGroupName());
+        log.debug("JSON для группы {} получен", groupEntity.getGroupName());
         if (jsonString == null || jsonString.isEmpty()) {
             log.error("Получен пустой JSON для группы {}", groupEntity.getGroupName());
             throw ExceptionFabric.create(ScheduleNotFoundException.class, ExceptionMessages.SCHEDULE_NOT_FOUND);
@@ -57,12 +57,26 @@ public class ScheduleParserService {
             LocalDate semesterStart = semesterService.getStartSemester();
             Map<String, UserEntity> teacherCache = new ConcurrentHashMap<>();
             List<ScheduleEntity> scheduleList = extractScheduleFromJson(groupEntity, rootNode, semesterStart, teacherCache);
-            log.info("Найдено {} пар для группы {}", scheduleList.size(), groupEntity.getGroupName());
+            log.debug("Найдено {} пар для группы {}", scheduleList.size(), groupEntity.getGroupName());
             return scheduleList;
         } catch (IOException e) {
             log.error("Ошибка парсинга JSON для группы {}: {}", groupEntity.getGroupName(), e.getMessage());
             throw new RuntimeException("Ошибка парсинга JSON", e);
         }
+    }
+
+    public List<String> findTeacherGroups(String teacherUUID) {
+        return extractTeacherGroupNames(readTeacherJson(teacherUUID));
+    }
+
+    private List<String> extractTeacherGroupNames(JsonNode root) {
+        JsonNode groupsNode = root.path("groups");
+        if (!groupsNode.isObject()) {
+            return List.of();
+        }
+        List<String> names = new ArrayList<>();
+        groupsNode.fieldNames().forEachRemaining(names::add);
+        return names;
     }
 
     private List<ScheduleEntity> extractScheduleFromJson(GroupEntity groupEntity,
@@ -96,9 +110,24 @@ public class ScheduleParserService {
                 .toList();
     }
 
+    private JsonNode readTeacherJson(String teacherUuid) {
+        try {
+            String json = getJsonOfScheduleTeacher(teacherUuid);
+            return objectMapper.readTree(json);
+        } catch (Exception e) {
+            log.error("Ошибка чтения teacher-json teacherUuid={}: {}", teacherUuid, e.getMessage(), e);
+            throw new RuntimeException("Ошибка чтения teacher-json", e);
+        }
+    }
+
     private String getJsonOfScheduleStudentWithGroupName(String groupName) {
         log.info("Получение json для группы {}", groupName);
         return restTemplate.getForObject(SCHEDULE_URL + getMd5Hash(groupName) + ".json", String.class);
+    }
+
+    private String getJsonOfScheduleTeacher(String teacherUUID) {
+        log.debug("Получение json для препода {}", teacherUUID);
+        return restTemplate.getForObject(SCHEDULE_URL + teacherUUID + ".json", String.class);
     }
 
     private String getMd5Hash(String input) {
@@ -169,6 +198,8 @@ public class ScheduleParserService {
                 first.getTeacher().getTeacherUuid().equalsIgnoreCase(second.getTeacher().getTeacherUuid())
                 &&
                 first.getLessonType().equals(second.getLessonType())
+                &&
+                first.getGroup().getGroupName().equalsIgnoreCase(second.getGroup().getGroupName())
                 &&
                 first.getClassroom().equalsIgnoreCase(second.getClassroom())
                 &&

@@ -95,7 +95,7 @@ public class SemesterService {
         if (inputDate.getDayOfWeek() == DayOfWeek.SUNDAY) {
             weekNumber++;
         }
-        log.info("Для даты {}: разница в днях: {}, вычисленная неделя: {}", inputDate, daysBetween, weekNumber);
+        log.debug("Для даты {}: разница в днях: {}, вычисленная неделя: {}", inputDate, daysBetween, weekNumber);
         return String.valueOf(weekNumber);
     }
 

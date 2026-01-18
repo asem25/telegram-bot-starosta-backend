@@ -5,8 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import ru.semavin.telegrambot.models.GroupEntity;
+import ru.semavin.telegrambot.services.groups.GroupService;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -22,7 +23,7 @@ import java.util.List;
 public class DailyScheduleUpdateService {
 
     private final ScheduleService scheduleService;
-
+    private final GroupService groupService;
     /**
      * Метод, запускаемый ежедневно в 03:00 ночи.
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
@@ -51,8 +52,8 @@ public class DailyScheduleUpdateService {
      *
      * @return список названий групп
      */
-    private static List<String> getAllGroups() {
-        //TODO в большом приложение возможно, что будет очень много групп, нужно удалять неактуальные
-        return Arrays.asList("М3О-403С-22");
+    private List<String> getAllGroups() {
+        return groupService.findAll().stream()
+                .map(GroupEntity::getGroupName).toList();
     }
 }

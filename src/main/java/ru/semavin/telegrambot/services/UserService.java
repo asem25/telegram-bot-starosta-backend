@@ -2,6 +2,7 @@ package ru.semavin.telegrambot.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.semavin.telegrambot.dto.UserDTO;
@@ -25,8 +26,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final GroupService groupService;
+
     @Transactional
-    public String save(UserDTO user){
+    public String save(UserDTO user) {
         log.info("Saving user: {}", user);
         if (userRepository.existsByTelegramId(user.getTelegramId())) {
             throw ExceptionFabric.create(UserWithTelegramIdAlreadyExistsException.class, ExceptionMessages.USER_TELEGRAM_ID_EXISTS);
@@ -38,7 +40,7 @@ public class UserService {
             // Допустим, вы ищете группу по названию
             GroupEntity group = groupService.findEntityByName(user.getGroupName());
             userEntity.setGroup(group);
-        }else {
+        } else {
             // Если DTO groupName == null, значит пользователь без группы
             userEntity.setGroup(null);
         }
@@ -61,15 +63,16 @@ public class UserService {
 
         return userRepository.save(userEntity).getUsername();
     }
-    public UserDTO getUserEntity(String username){
+
+    public UserDTO getUserEntity(String username) {
         return userMapper.userToUserDTO(userRepository.findByUsername(username)
                 .orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)));
     }
 
     @Transactional
-    public UserEntity findOrCreateTeacherAndAddGroup(String teacherUuid, String teacherName, GroupEntity group) {
+    public synchronized UserEntity findOrCreateTeacherAndAddGroup(String teacherUuid, String teacherName, GroupEntity group) {
+        Optional<UserEntity> user = userRepository.findByTeacherUuid(teacherUuid);
         if (teacherUuid.equals("00000000-0000-0000-0000-000000000000")) {
-            Optional<UserEntity> user = userRepository.findByTeacherUuid(teacherUuid);
             return user.orElseGet(() -> userRepository.save(
                     UserEntity.builder()
                             .teacherUuid(teacherUuid)
@@ -81,35 +84,47 @@ public class UserService {
             ));
         }
         String[] teacherFullName = teacherName.split(" ");
-        String lastName = teacherFullName[0];
-        String firstName = teacherFullName[1];
-        String patronymic = teacherFullName[2];
-
-
-        Optional<UserEntity> teacher = userRepository.findByFirstNameAndLastNameAndPatronymicIgnoreCase(firstName, lastName, patronymic);
-        if (teacher.isPresent()) {
-            if (!teacher.get().getTeachingGroups().contains(group)) {
-                teacher.get().getTeachingGroups().add(group);
-            }
-            ;
-            return teacher.get();
+        String lastName = "";
+        String firstName = "";
+        String patronymic = "";
+        if (teacherFullName.length > 0) {
+            lastName = teacherFullName[0];
+        }
+        if (teacherFullName.length >= 1) {
+            firstName = teacherFullName[1];
+        }
+        if (teacherFullName.length > 2) {
+            patronymic = teacherFullName[2];
         }
 
-        UserEntity user = UserEntity.builder()
-                .firstName(firstName)
-                .lastName(lastName)
-                .patronymic(patronymic)
-                .teacherUuid(teacherUuid)
-                .role(UserRole.TEACHER)
-                .build();
 
-        user.getTeachingGroups().add(group);
+        if (user.isPresent()) {
+            val groups = user.get().getTeachingGroups().stream().map(GroupEntity::getGroupName).toList();
+            if (!groups.contains(group.getGroupName())) {
+                user.get().getTeachingGroups().add(group);
+            }
 
-        return userRepository.save(user);
+            return user.get();
+        } else {
+            UserEntity userToCreate = UserEntity.builder()
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .patronymic(patronymic)
+                    .teacherUuid(teacherUuid)
+                    .role(UserRole.TEACHER)
+                    .build();
+
+            userToCreate.getTeachingGroups().add(group);
+
+            return userRepository.save(userToCreate);
+        }
     }
 
     public UserEntity findTeacher(String teacherUuid) {
-        return null;
+        return userRepository.findByTeacherUuid(teacherUuid)
+                .orElseThrow(() ->
+                        ExceptionFabric.create(UserNotFoundException.class,
+                                ExceptionMessages.USER_NOT_FOUND));
     }
 
 }

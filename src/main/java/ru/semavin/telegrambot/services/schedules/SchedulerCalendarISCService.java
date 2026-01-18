@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
+import ru.semavin.telegrambot.services.UserService;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -34,6 +35,7 @@ public class SchedulerCalendarISCService {
 
     private final SemesterService semesterService;
     private final ScheduleService scheduleService;
+    private final UserService userService;
 
 
     private static final DateTimeFormatter ICS_DATE_TIME_FORMATTER =
@@ -43,6 +45,12 @@ public class SchedulerCalendarISCService {
         val ics = buildCalendarISC(groupName);
         log.debug("Сформирован .ics за семестр для группы {}. Длина файла: {} символов",
                 groupName, ics.length());
+        return ics;
+    }
+    public String getIscCalendarByTeacher(String teacherUUID) {
+        val ics = buildTeacherCalendarISC(teacherUUID);
+        log.debug("Сформирован .ics за семестр для группы {}. Длина файла: {} символов",
+                teacherUUID, ics.length());
         return ics;
     }
 
@@ -69,6 +77,32 @@ public class SchedulerCalendarISCService {
         return sb.toString();
     }
 
+    private String buildTeacherCalendarISC(
+            String uuid
+    ) {
+        ZoneId zoneId = ZoneId.of("Europe/Moscow");
+        val schDtosList = scheduleService.getTeacherSchedule(uuid);
+        val teacher = userService.findTeacher(uuid);
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(VCALENDAR).append(CRLF);
+        sb.append(VERSION).append(CRLF);
+        sb.append(PRODID).append(CRLF);
+        sb.append(CALSCALE).append(CRLF);
+        sb.append(CALNAME).append(escapeText("Расписание " + teacher.getFirstName() + " "
+                + teacher.getPatronymic() + " " + teacher.getLastName()))
+                .append(CRLF);
+
+        schDtosList.forEach(dto ->
+                processBuildForSchedule(dto, zoneId, sb)
+        );
+
+        sb.append(END_VCALENDAR).append(CRLF);
+
+        return sb.toString();
+    }
+
     private void processBuildForSchedule(String groupName, ScheduleDTO dto, ZoneId zoneId, StringBuilder sb) {
         val start = LocalDateTime.of(dto.getLessonDate(), dto.getStartTime());
         val end = LocalDateTime.of(dto.getLessonDate(), dto.getEndTime());
@@ -86,6 +120,41 @@ public class SchedulerCalendarISCService {
         val description = new StringBuilder("Группа: " + groupName);
         if (dto.getTeacherName() != null && !dto.getTeacherName().isBlank()) {
             description.append("\nПреподаватель: ").append(dto.getTeacherName());
+            if (dto.getDescription() != null && !dto.getDescription().isBlank()) {
+                description.append("\nКомментарий: ").append(dto.getDescription());
+            }
+        }
+
+        sb.append(BEGIN_VEVENT).append(CRLF);
+        sb.append(DTSTART_TZID).append(zoneId).append(":").append(dtStart).append(CRLF);
+        sb.append(DTEND_TZID).append(zoneId).append(":").append(dtEnd).append(CRLF);
+        sb.append(UID).append(uid).append(CRLF);
+        sb.append(SUMMARY).append(escapeText(summary)).append(CRLF);
+
+        if (dto.getClassroom() != null && !dto.getClassroom().isBlank()) {
+            sb.append(LOCATION).append(escapeText(dto.getClassroom())).append(CRLF);
+        }
+
+        sb.append(DESCRIPTION).append(escapeText(description.toString())).append(CRLF);
+        sb.append(END_VEVENT).append(CRLF);
+    }
+
+    private void processBuildForSchedule(ScheduleDTO dto, ZoneId zoneId, StringBuilder sb) {
+        val start = LocalDateTime.of(dto.getLessonDate(), dto.getStartTime());
+        val end = LocalDateTime.of(dto.getLessonDate(), dto.getEndTime());
+
+        val dtStart = start.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
+        val dtEnd = end.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
+
+        val uid = dto.getControlSum();
+
+        String summary = dto.getSubjectName();
+        if (dto.getLessonType() != null && !dto.getLessonType().isBlank()) {
+            summary += " (" + getStringType(dto) + ")";
+        }
+
+        val description = new StringBuilder("Группы: " + dto.getGroupName());
+        if (dto.getTeacherName() != null && !dto.getTeacherName().isBlank()) {
             if (dto.getDescription() != null && !dto.getDescription().isBlank()) {
                 description.append("\nКомментарий: ").append(dto.getDescription());
             }

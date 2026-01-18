@@ -13,9 +13,10 @@ import ru.semavin.telegrambot.services.groups.GroupService;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.time.LocalTime;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -71,6 +72,65 @@ public class ScheduleMergingService {
         return changesDto.stream()
                 .sorted(Comparator.comparing(ScheduleDTO::getStartTime))
                 .toList();
+    }
+
+    public List<ScheduleDTO> mergeMultiGroups(Map<String, CompletableFuture<List<ScheduleDTO>>>
+                                                      scheduleGroupChunks) {
+        Map<LessonKey, ScheduleDTO> unique = new LinkedHashMap<>();
+        Map<LessonKey, Set<String>> groupsByKey = new HashMap<>();
+
+        scheduleGroupChunks.forEach((scheduleGroup, future) -> {
+            processFindMultiGroups(scheduleGroup, future, unique, groupsByKey);
+        });
+
+        unique.forEach((key, dto) -> {
+            setMultiGroups(key, dto, groupsByKey);
+        });
+
+        return unique.values().stream()
+                .sorted(Comparator
+                        .comparing(ScheduleDTO::getLessonDate)
+                        .thenComparing(ScheduleDTO::getStartTime))
+                .toList();
+    }
+
+    private void setMultiGroups(LessonKey key, ScheduleDTO dto,
+                                Map<LessonKey, Set<String>> groupsByKey) {
+        Set<String> groups = groupsByKey.get(key);
+        if (groups != null && !groups.isEmpty()) {
+            String merged = groups.stream().sorted().collect(Collectors.joining(", "));
+            dto.setGroupName(merged);
+        }
+    }
+
+    private void processFindMultiGroups(String scheduleGroup,
+                                        CompletableFuture<List<ScheduleDTO>> future,
+                                        Map<LessonKey, ScheduleDTO> unique,
+                                        Map<LessonKey, Set<String>> groupsByKey) {
+        List<ScheduleDTO> list = future.join();
+        for (ScheduleDTO dto : list) {
+            LessonKey key = new LessonKey(
+                    dto.getLessonDate(),
+                    dto.getStartTime(),
+                    dto.getEndTime(),
+                    dto.getSubjectName()
+            );
+
+            unique.putIfAbsent(key, dto);
+
+            Set<String> groups = groupsByKey.computeIfAbsent(key, k -> new HashSet<>());
+            if (scheduleGroup != null && !scheduleGroup.isBlank()) {
+                groups.add(scheduleGroup.trim());
+            }
+            if (dto.getGroupName() != null && !dto.getGroupName().isBlank()) {
+                for (String g : dto.getGroupName().split(",")) {
+                    String trimmed = g.trim();
+                    if (!trimmed.isEmpty()) {
+                        groups.add(trimmed);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -152,5 +212,38 @@ public class ScheduleMergingService {
         dtos.add(dto);
     }
 
+    private static final class LessonKey {
+        private final LocalDate lessonDate;
+        private final LocalTime startTime;
+        private final LocalTime endTime;
+        private final String subjectName;
+
+        private LessonKey(LocalDate lessonDate, LocalTime startTime, LocalTime endTime, String subjectName) {
+            this.lessonDate = lessonDate;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.subjectName = subjectName == null ? "" : subjectName;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof LessonKey)) return false;
+            LessonKey that = (LessonKey) o;
+            if (!lessonDate.equals(that.lessonDate)) return false;
+            if (!startTime.equals(that.startTime)) return false;
+            if (endTime != null ? !endTime.equals(that.endTime) : that.endTime != null) return false;
+            return subjectName.equals(that.subjectName);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = lessonDate.hashCode();
+            result = 31 * result + startTime.hashCode();
+            result = 31 * result + (endTime != null ? endTime.hashCode() : 0);
+            result = 31 * result + subjectName.hashCode();
+            return result;
+        }
+    }
 
 }

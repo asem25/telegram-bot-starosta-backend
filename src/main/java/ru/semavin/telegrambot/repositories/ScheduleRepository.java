@@ -40,4 +40,13 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
                                 @Param("endTime") LocalTime endTimeParse,
                                 @Param("type") LessonType lessonTypeParse,
                                 @Param("subName") String subjectName);
+
+    @Query("""
+            select sh from ScheduleEntity sh
+                        where sh.teacher.teacherUuid = :uuid
+                        and sh.group = :group
+            """)
+    List<ScheduleEntity> findScheduleByTeacher(@Param("uuid") String uuid,
+                                               @Param("group") GroupEntity group);
+
 }

@@ -123,4 +123,21 @@ public class ScheduleController {
                 .body(ics);
     }
 
+    @GetMapping(
+            value = "/teacher/semester/feed",
+            produces = "text/calendar; charset=UTF-8"
+    )
+    public ResponseEntity<String> getTeacherSemesterScheduleFeed(
+            @Parameter(description = "UUID преподавателя", required = true)
+            @RequestParam String teacherUUID
+    ) {
+        log.info("Пришел запрос на получение календаря для преподавателя {}", teacherUUID);
+        String ics = schedulerCalendarISCService.getIscCalendarByTeacher(teacherUUID);
+
+        return ResponseEntity
+                .ok()
+                .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
+                .body(ics);
+    }
+
 }

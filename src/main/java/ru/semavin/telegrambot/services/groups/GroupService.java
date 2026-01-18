@@ -22,6 +22,7 @@ import ru.semavin.telegrambot.utils.exceptions.UserAlreadyNotExistsForStarostaEx
 import ru.semavin.telegrambot.utils.exceptions.UserNotFoundException;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -53,18 +54,20 @@ public class GroupService {
         groupDTO.setNames_students(group.getUsers().stream().map(UserEntity::getUsername).toList());
         return groupDTO;
     }
+
     public GroupEntity findEntityByName(String name) {
         return groupRepository.findByGroupNameIgnoreCase(name)
                 .orElseThrow(() -> ExceptionFabric.create(GroupNotFoundException.class, ExceptionMessages.GROUP_NOT_FOUND));
     }
-    public GroupDTO findDtoById(Long id) {
-        return groupMapper.groupToDTO(groupRepository.findById(id)
-                .orElseThrow(() -> ExceptionFabric.create(GroupNotFoundException.class, ExceptionMessages.GROUP_NOT_FOUND)));
+
+    public List<GroupEntity> findAll() {
+        return groupRepository.findAll();
     }
+
     @Transactional
     public GroupDTO setStarosta(String groupName, String starostaUsername) {
         GroupEntity group = findEntityByName(groupName);
-        if (group.getStarosta() != null){
+        if (group.getStarosta() != null) {
             throw ExceptionFabric.create(UserAlreadyExistsForStarostaException.class, ExceptionMessages.USER_ALREADY_EXISTS_FOR_STAROSTA);
         }
         UserEntity userEntity = userRepository.findByUsername(starostaUsername).orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND));
@@ -92,6 +95,7 @@ public class GroupService {
         userRepository.save(userEntity);
         return groupMapper.groupToDTO(groupRepository.save(group));
     }
+
     @Transactional
     public GroupDTO createGroup(GroupDTO groupDTO) {
         GroupEntity group = GroupEntity.builder()
