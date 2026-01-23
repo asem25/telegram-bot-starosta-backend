@@ -24,6 +24,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +42,7 @@ public class ScheduleService {
     private final GroupService groupService;
     private final ScheduleChangeService scheduleChangeService;
     private final ScheduleMergingService scheduleMergingService;
+    private final Semaphore semaphore;
 
     @Getter
     private LocalDateTime lastUpdateStudents = LocalDateTime.now();
@@ -115,6 +117,7 @@ public class ScheduleService {
                                 group -> group,
                                 group -> CompletableFuture.supplyAsync(() -> {
                                     try {
+                                        semaphore.acquireUninterruptibly();
                                         val schedule = getActualSchedule(group, teacherUUID);
                                         if (schedule.isEmpty()) {
                                             log.warn("Не найдено расписание группы [{}], препод [{}]",
@@ -125,12 +128,12 @@ public class ScheduleService {
                                         log.error("Ошибка во время получения расписания [{}], группа [{}]"
                                                 , e.getMessage(), group, e);
                                         throw new RuntimeException(e);
+                                    } finally {
+                                        semaphore.release();
                                     }
                                 })
                         )
                 );
-
-        CompletableFuture.allOf(scheduleGroupChunks.values().toArray(new CompletableFuture[0])).join();
 
         return scheduleMergingService.mergeMultiGroups(scheduleGroupChunks);
     }
