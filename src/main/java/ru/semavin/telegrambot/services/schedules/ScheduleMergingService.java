@@ -15,7 +15,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -74,13 +73,13 @@ public class ScheduleMergingService {
                 .toList();
     }
 
-    public List<ScheduleDTO> mergeMultiGroups(Map<String, CompletableFuture<List<ScheduleDTO>>>
+    public List<ScheduleDTO> mergeMultiGroups(Map<String, List<ScheduleDTO>>
                                                       scheduleGroupChunks) {
         Map<LessonKey, ScheduleDTO> unique = new LinkedHashMap<>();
         Map<LessonKey, Set<String>> groupsByKey = new HashMap<>();
 
-        scheduleGroupChunks.forEach((scheduleGroup, future) -> {
-            processFindMultiGroups(scheduleGroup, future, unique, groupsByKey);
+        scheduleGroupChunks.forEach((scheduleGroup, scheduleDTOS) -> {
+            processFindMultiGroups(scheduleGroup, scheduleDTOS, unique, groupsByKey);
         });
 
         unique.forEach((key, dto) -> {
@@ -104,10 +103,9 @@ public class ScheduleMergingService {
     }
 
     private void processFindMultiGroups(String scheduleGroup,
-                                        CompletableFuture<List<ScheduleDTO>> future,
+                                        List<ScheduleDTO> list,
                                         Map<LessonKey, ScheduleDTO> unique,
                                         Map<LessonKey, Set<String>> groupsByKey) {
-        List<ScheduleDTO> list = future.join();
         for (ScheduleDTO dto : list) {
             LessonKey key = new LessonKey(
                     dto.getLessonDate(),

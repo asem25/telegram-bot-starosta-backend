@@ -22,8 +22,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
@@ -111,27 +111,11 @@ public class ScheduleService {
     @Transactional
     public List<ScheduleDTO> getTeacherSchedule(String teacherUUID) {
         val scheduleGroups = scheduleParserService.findTeacherGroups(teacherUUID);
-        Map<String, CompletableFuture<List<ScheduleDTO>>> scheduleGroupChunks =
+        Map<String, List<ScheduleDTO>> scheduleGroupChunks =
                 scheduleGroups.stream().collect(
                         Collectors.toMap(
                                 group -> group,
-                                group -> CompletableFuture.supplyAsync(() -> {
-                                    try {
-                                        semaphore.acquireUninterruptibly();
-                                        val schedule = getActualSchedule(group, teacherUUID);
-                                        if (schedule.isEmpty()) {
-                                            log.warn("Не найдено расписание группы [{}], препод [{}]",
-                                                    group, teacherUUID);
-                                        }
-                                        return schedule;
-                                    } catch (Exception e) {
-                                        log.error("Ошибка во время получения расписания [{}], группа [{}]"
-                                                , e.getMessage(), group, e);
-                                        throw new RuntimeException(e);
-                                    } finally {
-                                        semaphore.release();
-                                    }
-                                })
+                                group -> getActualSchedule(group, teacherUUID)
                         )
                 );
 
