@@ -28,7 +28,7 @@ public class DailyScheduleUpdateService {
      * Метод, запускаемый ежедневно в 03:00 ночи.
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
      */
-    @Scheduled(cron = "0 0 3 * * *", zone = "Europe/Moscow")
+    @Scheduled(cron = "${dailyscheduleupdate.cron}", zone = "Europe/Moscow")
 //    @Scheduled(fixedRate = 60000 * 3)
     @CacheEvict(value = "scheduleDay", allEntries = true)
     public void updateDailySchedules() {
