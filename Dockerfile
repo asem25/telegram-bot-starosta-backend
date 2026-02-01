@@ -13,8 +13,7 @@ WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8081
 ENV JAVA_TOOL_OPTIONS=" \
- -XX:ActiveProcessorCount=1 \
- -XX:+UseSerialGC \
+ -XX:+UseG1GC \
  -XX:MaxRAMPercentage=60 -XX:InitialRAMPercentage=24 \
  -Xss256k \
  -XX:MaxMetaspaceSize=108m \

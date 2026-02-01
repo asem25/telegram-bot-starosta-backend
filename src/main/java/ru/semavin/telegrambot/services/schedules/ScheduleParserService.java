@@ -47,11 +47,11 @@ public class ScheduleParserService {
 
     public List<ScheduleEntity> findScheduleByGroup(GroupEntity groupEntity) {
         String jsonString = getJsonOfScheduleStudentWithGroupName(groupEntity.getGroupName());
-        log.debug("JSON для группы {} получен", groupEntity.getGroupName());
         if (jsonString == null || jsonString.isEmpty()) {
             log.error("Получен пустой JSON для группы {}", groupEntity.getGroupName());
             throw ExceptionFabric.create(ScheduleNotFoundException.class, ExceptionMessages.SCHEDULE_NOT_FOUND);
         }
+        log.debug("JSON для группы {} получен. Размер [{}]", groupEntity.getGroupName(), jsonString.length());
         try {
             JsonNode rootNode = objectMapper.readTree(jsonString);
             LocalDate semesterStart = semesterService.getStartSemester();
