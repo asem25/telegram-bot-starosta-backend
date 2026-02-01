@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import ru.semavin.telegrambot.services.groups.GroupService;
 
 import java.util.List;
 
@@ -26,8 +25,8 @@ public class DailyScheduleUpdateService {
      * Метод, запускаемый ежедневно в 03:00 ночи.
      * В этом методе происходит выгрузка расписания для всех групп, указанных в {@link #getAllGroups()}.
      */
-    @Scheduled(cron = "${dailyscheduleupdate.cron}", zone = "Europe/Moscow")
-//    @Scheduled(fixedRate = 60000 * 3)
+//    @Scheduled(cron = "${dailyscheduleupdate.cron}", zone = "Europe/Moscow")
+    @Scheduled(fixedRate = 3 * 60 * 1000)
     @CacheEvict(value = "scheduleDay", allEntries = true)
     public void updateDailySchedules() {
         log.info("Начало ежедневного обновления расписания.");
