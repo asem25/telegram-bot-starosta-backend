@@ -71,18 +71,10 @@ public class ScheduleService {
     @Transactional
     public List<ScheduleDTO> getActualSchedule(String groupName, String teacherUUID) {
         GroupEntity group = groupService.findEntityByName(groupName);
-        val schedule = scheduleRepository.findScheduleByTeacher(teacherUUID, group);
-        if (schedule.isEmpty()) {
-            log.debug("Парсинг расписания группы [{}].", groupName);
-            val scheduleAfterParsing = scheduleParserService.findScheduleByGroup(group);
-            return scheduleMapper.toScheduleDTOList(
-                    scheduleRepository.saveAll(
-                                    scheduleAfterParsing).stream()
-                            .filter(scheduleEntity -> scheduleEntity.getTeacher()
-                                    .getTeacherUuid().equalsIgnoreCase(teacherUUID))
-                            .toList());
-        }
-        return scheduleMapper.toScheduleDTOList(schedule);
+        log.debug("Парсинг расписания группы [{}].", groupName);
+        val scheduleAfterParsing = scheduleParserService.findScheduleByGroup(group);
+        return scheduleMapper.toScheduleDTOList(
+                scheduleAfterParsing);
     }
 
     /**
