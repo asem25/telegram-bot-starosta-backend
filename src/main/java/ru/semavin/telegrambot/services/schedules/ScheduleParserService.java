@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.client.RestTemplate;
@@ -26,7 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -36,6 +37,9 @@ import java.util.stream.StreamSupport;
 @RequiredArgsConstructor
 public class ScheduleParserService {
 
+    @Value("${database.maximum.parallel}")
+    private int maximumParallel;
+
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm:ss");
     private static final String SCHEDULE_URL = "https://public.mai.ru/schedule/data/";
 
@@ -43,7 +47,7 @@ public class ScheduleParserService {
     private final UserService teacherService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final ExecutorService executorService;
+
 
     public List<ScheduleEntity> findScheduleByGroup(GroupEntity groupEntity) {
         String jsonString = getJsonOfScheduleStudentWithGroupName(groupEntity.getGroupName());
@@ -96,7 +100,7 @@ public class ScheduleParserService {
                             // Запускаем парсинг дня в пуле
                             return CompletableFuture.supplyAsync(
                                     () -> parsePairs(pairsNode, groupEntity, date, teacherCache),
-                                    executorService
+                                    Executors.newFixedThreadPool(maximumParallel)
                             );
                         })
                         .toList();
