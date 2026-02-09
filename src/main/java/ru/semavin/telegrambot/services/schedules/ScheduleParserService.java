@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.client.RestTemplate;
@@ -27,7 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -37,9 +36,6 @@ import java.util.stream.StreamSupport;
 @RequiredArgsConstructor
 public class ScheduleParserService {
 
-    @Value("${database.maximum.parallel}")
-    private int maximumParallel;
-
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm:ss");
     private static final String SCHEDULE_URL = "https://public.mai.ru/schedule/data/";
 
@@ -47,6 +43,7 @@ public class ScheduleParserService {
     private final UserService teacherService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final ExecutorService executorService;
 
 
     public List<ScheduleEntity> findScheduleByGroup(GroupEntity groupEntity) {
@@ -100,7 +97,7 @@ public class ScheduleParserService {
                             // Запускаем парсинг дня в пуле
                             return CompletableFuture.supplyAsync(
                                     () -> parsePairs(pairsNode, groupEntity, date, teacherCache),
-                                    Executors.newFixedThreadPool(maximumParallel)
+                                    executorService
                             );
                         })
                         .toList();
@@ -158,7 +155,8 @@ public class ScheduleParserService {
     }
 
 
-    private List<ScheduleEntity> parsePairs(JsonNode pairsNode, GroupEntity groupEntity, String lessonDate, Map<String, UserEntity> teacherCache) {
+    private List<ScheduleEntity> parsePairs(JsonNode pairsNode, GroupEntity groupEntity, String lessonDate,
+                                            Map<String, UserEntity> teacherCache) {
         int lessonWeek = Integer.parseInt(semesterService.getWeekForDate(lessonDate));
         return streamFields(pairsNode)
                 .flatMap(timeEntry -> streamFields(timeEntry.getValue())

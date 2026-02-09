@@ -2,7 +2,6 @@ package ru.semavin.telegrambot.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.semavin.telegrambot.dto.UserDTO;
@@ -16,8 +15,6 @@ import ru.semavin.telegrambot.services.groups.GroupService;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
 import ru.semavin.telegrambot.utils.exceptions.UserNotFoundException;
 import ru.semavin.telegrambot.utils.exceptions.UserWithTelegramIdAlreadyExistsException;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -70,54 +67,56 @@ public class UserService {
     }
 
     @Transactional
-    public synchronized UserEntity findOrCreateTeacherAndAddGroup(String teacherUuid, String teacherName, GroupEntity group) {
-        Optional<UserEntity> user = userRepository.findByTeacherUuid(teacherUuid);
-        if (teacherUuid.equals("00000000-0000-0000-0000-000000000000")) {
-            return user.orElseGet(() -> userRepository.save(
-                    UserEntity.builder()
-                            .teacherUuid(teacherUuid)
-                            .role(UserRole.TEACHER)
-                            .firstName("Не указан")
-                            .lastName(" ")
-                            .patronymic(" ")
-                            .build()
-            ));
+    public synchronized UserEntity findOrCreateTeacherAndAddGroup(
+            String teacherUuid,
+            String teacherName,
+            GroupEntity group
+    ) {
+        if ("00000000-0000-0000-0000-000000000000".equals(teacherUuid)) {
+            return userRepository.findByTeacherUuid(teacherUuid)
+                    .orElseGet(() -> userRepository.save(
+                            UserEntity.builder()
+                                    .teacherUuid(teacherUuid)
+                                    .role(UserRole.TEACHER)
+                                    .firstName("Не указан")
+                                    .lastName(" ")
+                                    .patronymic(" ")
+                                    .build()
+                    ));
         }
-        String[] teacherFullName = teacherName.split(" ");
+
+        UserEntity teacher = userRepository.findByTeacherUuid(teacherUuid)
+                .orElseGet(() -> createUser(teacherUuid, teacherName));
+
+        userRepository.insertIgnore(
+                teacher.getId(),
+                group.getId()
+        );
+
+        return teacher;
+    }
+
+    private UserEntity createUser(String teacherUuid, String teacherName) {
         String lastName = "";
         String firstName = "";
         String patronymic = "";
-        if (teacherFullName.length > 0) {
-            lastName = teacherFullName[0];
-        }
-        if (teacherFullName.length >= 1) {
-            firstName = teacherFullName[1];
-        }
-        if (teacherFullName.length > 2) {
-            patronymic = teacherFullName[2];
+
+        if (teacherName != null && !teacherName.isBlank()) {
+            String[] parts = teacherName.trim().split("\\s+");
+            if (parts.length > 0) lastName = parts[0];
+            if (parts.length > 1) firstName = parts[1];
+            if (parts.length > 2) patronymic = parts[2];
         }
 
-
-        if (user.isPresent()) {
-            val groups = user.get().getTeachingGroups().stream().map(GroupEntity::getGroupName).toList();
-            if (!groups.contains(group.getGroupName())) {
-                user.get().getTeachingGroups().add(group);
-            }
-
-            return user.get();
-        } else {
-            UserEntity userToCreate = UserEntity.builder()
-                    .firstName(firstName)
-                    .lastName(lastName)
-                    .patronymic(patronymic)
-                    .teacherUuid(teacherUuid)
-                    .role(UserRole.TEACHER)
-                    .build();
-
-            userToCreate.getTeachingGroups().add(group);
-
-            return userRepository.save(userToCreate);
-        }
+        return userRepository.saveAndFlush(
+                UserEntity.builder()
+                        .teacherUuid(teacherUuid)
+                        .role(UserRole.TEACHER)
+                        .firstName(firstName)
+                        .lastName(lastName)
+                        .patronymic(patronymic)
+                        .build()
+        );
     }
 
     public UserEntity findTeacher(String teacherUuid) {
