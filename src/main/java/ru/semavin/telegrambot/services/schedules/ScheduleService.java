@@ -72,7 +72,10 @@ public class ScheduleService {
     public List<ScheduleDTO> getActualSchedule(String groupName, String teacherUUID) {
         GroupEntity group = groupService.findEntityByName(groupName);
         log.debug("Парсинг расписания группы [{}].", groupName);
-        val scheduleAfterParsing = scheduleParserService.findScheduleByGroup(group);
+        val scheduleAfterParsing = scheduleParserService.findScheduleByGroup(group)
+                .stream().filter(sch ->
+                        sch.getTeacher().getTeacherUuid().equals(teacherUUID))
+                .toList();
         return scheduleMapper.toScheduleDTOList(
                 scheduleAfterParsing);
     }
