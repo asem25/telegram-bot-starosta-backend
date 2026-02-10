@@ -26,6 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -348,8 +349,11 @@ public class ScheduleParserServiceTest {
                   }
                 }
                 """;
-        scheduleParserService = new ScheduleParserService(semesterService, teacherService, restTemplate, mapper, executorService);
-        scheduleParserServiceWithSemesterStartAfterLessons = new ScheduleParserService(semesterServiceLater, teacherService, restTemplate, mapper, executorService);
+        scheduleParserService = new ScheduleParserService(semesterService, teacherService, restTemplate, mapper,
+                executorService,
+                new Semaphore(10));
+        scheduleParserServiceWithSemesterStartAfterLessons = new ScheduleParserService(semesterServiceLater,
+                teacherService, restTemplate, mapper, executorService, new Semaphore(10));
         // Заменяем restTemplate внутри ScheduleParserService на наш мок
         ReflectionTestUtils.setField(scheduleParserService, "restTemplate", restTemplate);
         ReflectionTestUtils.setField(scheduleParserServiceWithSemesterStartAfterLessons, "restTemplate", restTemplate);
