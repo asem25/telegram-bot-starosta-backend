@@ -30,10 +30,8 @@ public class SchedulerCalendarISCService {
     private static final String PRODID = "PRODID:-//TelegramBot-Starosta//SemesterSchedule//RU";
     private static final String CALSCALE = "CALSCALE:GREGORIAN";
     private static final String CALNAME = "X-WR-CALNAME:";
-    private static final String telegram_tag = "@telegrambot-starosta";
     public static final String CRLF = "\r\n";
 
-    private final SemesterService semesterService;
     private final ScheduleService scheduleService;
     private final UserService userService;
 
@@ -42,15 +40,21 @@ public class SchedulerCalendarISCService {
             DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
 
     public String getIscCalendarByGroupName(String groupName) {
+        val timeStart = System.currentTimeMillis();
         val ics = buildCalendarISC(groupName);
         log.debug("Сформирован .ics за семестр для группы {}. Длина файла: {} символов",
                 groupName, ics.length());
+        val timeEnd = System.currentTimeMillis();
+        log.info("Создание календаря заняло [{}]ms", timeEnd - timeStart);
         return ics;
     }
     public String getIscCalendarByTeacher(String teacherUUID) {
+        val timeStart = System.currentTimeMillis();
         val ics = buildTeacherCalendarISC(teacherUUID);
         log.debug("Сформирован .ics за семестр для группы {}. Длина файла: {} символов",
                 teacherUUID, ics.length());
+        val timeEnd = System.currentTimeMillis();
+        log.info("Создание календаря заняло [{}]ms", timeEnd - timeStart);
         return ics;
     }
 

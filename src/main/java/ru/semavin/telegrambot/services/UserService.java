@@ -1,7 +1,9 @@
 package ru.semavin.telegrambot.services;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.semavin.telegrambot.dto.UserDTO;
@@ -20,6 +22,8 @@ import ru.semavin.telegrambot.utils.exceptions.UserWithTelegramIdAlreadyExistsEx
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
+
+    private final EntityManager em;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final GroupService groupService;
@@ -64,6 +68,24 @@ public class UserService {
     public UserDTO getUserEntity(String username) {
         return userMapper.userToUserDTO(userRepository.findByUsername(username)
                 .orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)));
+    }
+
+    @Transactional
+    public UserEntity saveEntity(UserEntity user) {
+       val id = userRepository.insertWithConflict(
+               user.getFirstName(),
+               user.getLastName(),
+               user.getPatronymic(),
+               user.getRole().name(),
+               user.getTeacherUuid(),
+               null,
+               null,
+               null
+       );
+       user.getTeachingGroups().forEach(group ->
+               userRepository.insertIgnore(id, group.getId()));
+
+       return em.getReference(UserEntity.class, id);
     }
 
     @Transactional

@@ -1,11 +1,8 @@
 package ru.semavin.telegrambot.services.schedules;
 
-
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +16,13 @@ import ru.semavin.telegrambot.services.ScheduleChangeService;
 import ru.semavin.telegrambot.services.groups.GroupService;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
@@ -32,10 +31,10 @@ import java.util.stream.Collectors;
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleActualizationService scheduleActualizationService;
     private final ScheduleParserService scheduleParserService;
     private final ScheduleMapper scheduleMapper;
     private final SemesterService semesterService;
@@ -43,51 +42,26 @@ public class ScheduleService {
     private final ScheduleChangeService scheduleChangeService;
     private final ScheduleMergingService scheduleMergingService;
     private final Semaphore semaphore;
+    private final ExecutorService executor;
 
-    @Getter
-    private LocalDateTime lastUpdateStudents = LocalDateTime.now();
-    @Getter
-    private LocalDateTime lastUpdateTeacher = LocalDateTime.now();
-
-    /**
-     * Получает актуальное расписание для указанной группы и недели, парсит сайт и сохраняет в БД.
-     */
-    @Transactional
-    @CacheEvict(value = {"scheduleCache", "scheduleDay"}, allEntries = true)
-    public synchronized List<ScheduleDTO> getActualSchedule(String groupName) {
-        lastUpdateStudents = LocalDateTime.now();
-        GroupEntity group = groupService.findEntityByName(groupName);
-        List<ScheduleEntity> scheduleEntities = scheduleParserService.findScheduleByGroup(group);
-
-        scheduleRepository.deleteAllByGroup(group);
-
-        log.info("Расписание для группы {} найдено", group);
-
-        List<ScheduleEntity> savedEntities = scheduleRepository.saveAllAndFlush(scheduleEntities);
-
-        return scheduleMapper.toScheduleDTOList(savedEntities);
+    public ScheduleService(ScheduleRepository scheduleRepository, ScheduleActualizationService
+                                   scheduleActualizationService,
+                           ScheduleParserService scheduleParserService, ScheduleMapper scheduleMapper,
+                           SemesterService semesterService, GroupService groupService,
+                           ScheduleChangeService scheduleChangeService, ScheduleMergingService scheduleMergingService,
+                           @Qualifier("groupSemaphore")
+                           Semaphore semaphore, ExecutorService executor) {
+        this.scheduleRepository = scheduleRepository;
+        this.scheduleActualizationService = scheduleActualizationService;
+        this.scheduleParserService = scheduleParserService;
+        this.scheduleMapper = scheduleMapper;
+        this.semesterService = semesterService;
+        this.groupService = groupService;
+        this.scheduleChangeService = scheduleChangeService;
+        this.scheduleMergingService = scheduleMergingService;
+        this.semaphore = semaphore;
+        this.executor = executor;
     }
-
-    @Transactional
-    public List<ScheduleDTO> getActualSchedule(String groupName, String teacherUUID) {
-        GroupEntity group = groupService.findEntityByName(groupName);
-        log.debug("Парсинг расписания группы [{}].", groupName);
-        val scheduleAfterParsing = scheduleParserService.findScheduleByGroup(group)
-                .stream().filter(sch ->
-                        sch.getTeacher().getTeacherUuid().equals(teacherUUID))
-                .toList();
-        return scheduleMapper.toScheduleDTOList(
-                scheduleAfterParsing);
-    }
-
-    /**
-     * Возвращает расписание за заданный день
-     * Кэширование + проверка в БД
-     *
-     * @param groupName номер группы
-     * @param date      дата в виде строки
-     * @return возвращает список DTO расписаний
-     */
 
     @Transactional
     @Cacheable(value = "scheduleDay", key = "#groupName + '-' + #date", unless = "#result == null")
@@ -106,15 +80,33 @@ public class ScheduleService {
     @Transactional
     public List<ScheduleDTO> getTeacherSchedule(String teacherUUID) {
         val scheduleGroups = scheduleParserService.findTeacherGroups(teacherUUID);
-        Map<String, List<ScheduleDTO>> scheduleGroupChunks =
+        Map<String, CompletableFuture<List<ScheduleDTO>>> scheduleGroupChunks =
                 scheduleGroups.stream().collect(
                         Collectors.toMap(
                                 group -> group,
-                                group -> getActualSchedule(group, teacherUUID)
+                                group -> CompletableFuture.supplyAsync(() -> {
+                                    semaphore.acquireUninterruptibly();
+                                    try {
+                                        return scheduleActualizationService
+                                                .getActualSchedule(group, teacherUUID);
+                                    } catch (Exception e) {
+                                        log.error(e.getMessage(), e);
+                                        throw new RuntimeException(e);
+                                    } finally {
+                                        semaphore.release();
+                                    }
+                                }, executor)
                         )
                 );
+        Map<String, List<ScheduleDTO>> res = new HashMap<>(scheduleGroupChunks.size());
 
-        return scheduleMergingService.mergeMultiGroups(scheduleGroupChunks);
+        CompletableFuture.allOf(scheduleGroupChunks.values().toArray(new CompletableFuture[0])).join();
+
+        scheduleGroupChunks.forEach((groupName, schedules) ->
+                res.put(groupName, schedules.join()));
+        return scheduleMergingService.mergeMultiGroups(
+                res
+        );
     }
 
     public List<ScheduleDTO> getScheduleForISC(String groupName) {

@@ -2,8 +2,9 @@ package ru.semavin.telegrambot.services.schedules;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.client.RestTemplate;
@@ -12,6 +13,7 @@ import ru.semavin.telegrambot.models.ScheduleEntity;
 import ru.semavin.telegrambot.models.UserEntity;
 import ru.semavin.telegrambot.models.enums.ExceptionMessages;
 import ru.semavin.telegrambot.models.enums.LessonType;
+import ru.semavin.telegrambot.models.enums.UserRole;
 import ru.semavin.telegrambot.services.UserService;
 import ru.semavin.telegrambot.utils.DateUtils;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
@@ -27,13 +29,13 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ScheduleParserService {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm:ss");
@@ -44,6 +46,20 @@ public class ScheduleParserService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final ExecutorService executorService;
+    private final Semaphore semaphore;
+
+    public ScheduleParserService(SemesterService semesterService,
+                                 UserService teacherService, RestTemplate restTemplate,
+                                 ObjectMapper objectMapper, ExecutorService executorService,
+                                 @Qualifier("dayParseSemaphore")
+                                 Semaphore semaphore) {
+        this.semesterService = semesterService;
+        this.teacherService = teacherService;
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+        this.executorService = executorService;
+        this.semaphore = semaphore;
+    }
 
 
     public List<ScheduleEntity> findScheduleByGroup(GroupEntity groupEntity) {
@@ -57,9 +73,16 @@ public class ScheduleParserService {
             JsonNode rootNode = objectMapper.readTree(jsonString);
             LocalDate semesterStart = semesterService.getStartSemester();
             Map<String, UserEntity> teacherCache = new ConcurrentHashMap<>();
-            List<ScheduleEntity> scheduleList = extractScheduleFromJson(groupEntity, rootNode, semesterStart, teacherCache);
+            List<ScheduleEntity> scheduleList = extractScheduleFromJson(groupEntity, rootNode,
+                    semesterStart, teacherCache);
+            Map<String, UserEntity> studentCache = new HashMap<>();
+            teacherCache.forEach((s, u) ->
+                    studentCache.put(s, teacherService.saveEntity(u)));
             log.debug("Найдено {} пар для группы {}", scheduleList.size(), groupEntity.getGroupName());
-            return scheduleList;
+            return scheduleList.stream()
+                    .peek(sch ->
+                            sch.setTeacher(studentCache.get(sch.getTeacher().getTeacherUuid())))
+                    .toList();
         } catch (IOException e) {
             log.error("Ошибка парсинга JSON для группы {}: {}", groupEntity.getGroupName(), e.getMessage());
             throw new RuntimeException("Ошибка парсинга JSON", e);
@@ -87,16 +110,27 @@ public class ScheduleParserService {
         List<CompletableFuture<List<ScheduleEntity>>> tasks =
                 streamFields(rootNode)
                         .filter(e -> !"group".equals(e.getKey()))
-                        .filter(e -> !LocalDate.parse(e.getKey(), DateUtils.FORMATTER).isBefore(semesterStart))
+                        .filter(e ->
+                                !LocalDate.parse(e.getKey(), DateUtils.FORMATTER).isBefore(semesterStart))
                         .map(e -> {
                             String date = e.getKey();
                             JsonNode pairsNode = e.getValue().path("pairs");
                             if (pairsNode.isMissingNode() || pairsNode.isNull()) {
                                 return CompletableFuture.completedFuture(Collections.<ScheduleEntity>emptyList());
                             }
-                            // Запускаем парсинг дня в пуле
                             return CompletableFuture.supplyAsync(
-                                    () -> parsePairs(pairsNode, groupEntity, date, teacherCache),
+                                    () -> {
+                                        try {
+                                            semaphore.acquire();
+                                            return parsePairs(pairsNode, groupEntity, date, teacherCache);
+                                        } catch (Exception exp) {
+                                            log.error("Ошибка во время парсинга расписания дня [{}], [{}]",
+                                                    exp, exp.getMessage());
+                                            throw new RuntimeException(exp);
+                                        } finally {
+                                            semaphore.release();
+                                        }
+                                    },
                                     executorService
                             );
                         })
@@ -222,20 +256,14 @@ public class ScheduleParserService {
         LessonType type = mapLessonType(firstFieldName(lessonNode.get("type")).orElse(""));
         String classroom = firstFieldValue(lessonNode.get("room")).orElse("");
         // teacher
-        String teacherUuid = null, teacherName = " ";
         var lectorNode = lessonNode.get("lector");
-        if (lectorNode != null && lectorNode.fieldNames().hasNext()) {
-            var e = lectorNode.fields().next();
-            teacherUuid = e.getKey();
-            teacherName = e.getValue().asText();
-        }
-        UserEntity teacher;
-        if (teacherCache.containsKey(teacherUuid)) {
-            teacher = teacherCache.get(teacherUuid);
-        } else {
-            teacher = teacherService.findOrCreateTeacherAndAddGroup(teacherUuid, teacherName, groupEntity);
-        }
-        log.debug("Найдено расписание\nдля даты {}\nдля группы{}\nпрепод{}\nпредмет{}",
+        String teacherUuid = getTeacherUuid(lectorNode);
+        String teacherName = getTeacherName(lectorNode);
+        UserEntity teacher
+                = teacherCache.computeIfAbsent(teacherUuid,
+                K -> buildTeacher(teacherUuid, teacherName));
+        teacher.getTeachingGroups().add(groupEntity);
+        log.debug("Найдено расписание для даты [{}] для группы [{}] препод [{}] предмет [{}]",
                 lessonDate,
                 groupEntity.getGroupName(),
                 teacher.getTeacherUuid(),
@@ -249,6 +277,54 @@ public class ScheduleParserService {
                         classroom,
                         teacher,
                         start, end));
+    }
+
+    private String getTeacherUuid(JsonNode lectorNode) {
+        if (lectorNode != null && lectorNode.fieldNames().hasNext()) {
+            val e = lectorNode.fields().next();
+            return e.getKey();
+        }
+        return " ";
+    }
+
+    private String getTeacherName(JsonNode lectorNode) {
+        if (lectorNode != null && lectorNode.fieldNames().hasNext()) {
+            val e = lectorNode.fields().next();
+            return e.getValue().asText();
+        }
+        return null;
+    }
+
+    private UserEntity buildTeacher(String teacherUuid, String teacherName) {
+        if ("00000000-0000-0000-0000-000000000000".equals(teacherUuid)) {
+            return UserEntity.builder()
+                    .teacherUuid(teacherUuid)
+                    .role(UserRole.TEACHER)
+                    .firstName("Не указан")
+                    .teachingGroups(new HashSet<>())
+                    .lastName(" ")
+                    .patronymic(" ")
+                    .build();
+        }
+        String lastName = "";
+        String firstName = "";
+        String patronymic = "";
+
+        if (teacherName != null && !teacherName.isBlank()) {
+            String[] parts = teacherName.trim().split("\\s+");
+            if (parts.length > 0) lastName = parts[0];
+            if (parts.length > 1) firstName = parts[1];
+            if (parts.length > 2) patronymic = parts[2];
+        }
+
+        return UserEntity.builder()
+                .teacherUuid(teacherUuid)
+                .role(UserRole.TEACHER)
+                .teachingGroups(new HashSet<>())
+                .firstName(firstName)
+                .lastName(lastName)
+                .patronymic(patronymic)
+                .build();
     }
 
     private static ScheduleEntity buildScheduleEntity(GroupEntity groupEntity, String lessonDate,

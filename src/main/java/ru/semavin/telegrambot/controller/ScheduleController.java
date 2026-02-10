@@ -117,6 +117,7 @@ public class ScheduleController {
         log.info("Пришел запрос на получение календаря для группы {}", groupName);
         String ics = schedulerCalendarISCService.getIscCalendarByGroupName(groupName);
 
+        log.info("Запрос на получение календаря для группы [{}] успешно отработан", groupName);
         return ResponseEntity
                 .ok()
                 .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
@@ -131,8 +132,10 @@ public class ScheduleController {
             @Parameter(description = "UUID преподавателя", required = true)
             @RequestParam String teacherUUID
     ) {
+
         log.info("Пришел запрос на получение календаря для преподавателя {}", teacherUUID);
         String ics = schedulerCalendarISCService.getIscCalendarByTeacher(teacherUUID);
+        log.info("Получен календарь преподавателя [{}]", teacherUUID);
 
         return ResponseEntity
                 .ok()

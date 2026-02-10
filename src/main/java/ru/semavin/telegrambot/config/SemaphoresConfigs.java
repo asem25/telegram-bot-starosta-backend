@@ -9,12 +9,20 @@ import java.util.concurrent.Semaphore;
 @Configuration
 public class SemaphoresConfigs {
 
-    @Value("${database.maximum.parallel}")
-    private int maximumParallel;
+    @Value("${maximum.group.parallel}")
+    private int maximumParallelGroup;
 
-    @Bean
-    public Semaphore semaphore() {
-        return new Semaphore(maximumParallel);
+    @Value("${maximum.dayparse.parallel}")
+    private int maximumParallelDayParse;
+
+    @Bean("groupSemaphore")
+    public Semaphore groupSemaphore() {
+        return new Semaphore(maximumParallelGroup);
+    }
+
+    @Bean("dayParseSemaphore")
+    public Semaphore dayParseSemaphore() {
+        return new Semaphore(maximumParallelDayParse);
     }
 
 }
