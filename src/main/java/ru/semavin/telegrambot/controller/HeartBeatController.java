@@ -14,7 +14,7 @@ import java.time.LocalDate;
 public class HeartBeatController {
     @GetMapping("/check")
     public ResponseEntity<String> heartbeat() {
-        log.info("Checking heartbeat at: {}", LocalDate.now());
+        log.debug("Checking heartbeat at: {}", LocalDate.now());
         return ResponseEntity.ok("API is alive");
     }
 }
