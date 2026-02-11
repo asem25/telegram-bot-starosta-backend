@@ -72,7 +72,7 @@ public class UserService {
 
     @Transactional
     public UserEntity saveEntity(UserEntity user) {
-       val id = userRepository.insertWithConflict(
+       userRepository.insertWithConflict(
                user.getFirstName(),
                user.getLastName(),
                user.getPatronymic(),
@@ -82,6 +82,10 @@ public class UserService {
                null,
                null
        );
+
+       val id = userRepository.findByTeacherUuid(user.getTeacherUuid())
+               .get().getId();
+
        user.getTeachingGroups().forEach(group ->
                userRepository.insertIgnore(id, group.getId()));
 

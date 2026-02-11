@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
+
     Optional<UserEntity> findByUsername(String username);
 
     boolean existsByTelegramId(Long telegramId);
@@ -28,32 +29,20 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             @Param("groupId") long groupId
     );
 
+    @Modifying
     @Query(value = """
-            INSERT INTO users (
-                first_name,
-                last_name,
-                patronymic,
-                role,
-                teacher_uuid,
-                telegram_id,
-                username,
-                group_id
+            INSERT INTO users (first_name, last_name,
+                patronymic, role, teacher_uuid,
+                telegram_id, username, group_id
             ) VALUES (
-                :firstName,
-                :lastName,
-                :patronymic,
-                :role,
-                :teacherUuid,
-                :teacherId,
-                :username,
-                :groupId
+                :firstName, :lastName, :patronymic,
+                :role, :teacherUuid, :teacherId,
+                :username, :groupId
             )
             ON CONFLICT (teacher_uuid)
-            DO UPDATE
-            SET teacher_uuid = EXCLUDED.teacher_uuid
-            RETURNING id;
+            DO NOTHING;
             """, nativeQuery = true)
-    Long insertWithConflict(
+    void insertWithConflict(
             @Param("firstName") String firstName,
             @Param("lastName") String lastName,
             @Param("patronymic") String patronymic,
