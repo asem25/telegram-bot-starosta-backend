@@ -14,7 +14,7 @@ COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8081
 ENV JAVA_TOOL_OPTIONS=" \
  -XX:+UseG1GC \
- -XX:MaxRAMPercentage=60 -XX:InitialRAMPercentage=24 \
+ -Xms128m -Xmx384m \
  -Xss256k \
  -XX:MaxMetaspaceSize=108m \
  -XX:ReservedCodeCacheSize=16m -XX:MaxDirectMemorySize=24m \

@@ -19,6 +19,8 @@ target/
 *.iml
 *.ipr
 *.properties
+!src/main/resources/application.properties
+!src/main/resources/application-*.properties
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
@@ -31,3 +33,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local environment ###
+test.env
+.env
+.env.*
+!*.env.example

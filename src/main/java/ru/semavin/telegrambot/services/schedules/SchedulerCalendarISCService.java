@@ -114,7 +114,9 @@ public class SchedulerCalendarISCService {
         val dtStart = start.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
         val dtEnd = end.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
 
-        val uid = dto.getControlSum();
+        val uid = dto.getLessonOccurrenceId() == null
+                ? dto.getControlSum()
+                : dto.getLessonOccurrenceId() + "@starosta";
 
         String summary = dto.getSubjectName();
         if (dto.getLessonType() != null && !dto.getLessonType().isBlank()) {
@@ -150,7 +152,9 @@ public class SchedulerCalendarISCService {
         val dtStart = start.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
         val dtEnd = end.atZone(zoneId).format(ICS_DATE_TIME_FORMATTER);
 
-        val uid = dto.getControlSum();
+        val uid = dto.getLessonOccurrenceId() == null
+                ? dto.getControlSum()
+                : dto.getLessonOccurrenceId() + "@starosta";
 
         String summary = dto.getSubjectName();
         if (dto.getLessonType() != null && !dto.getLessonType().isBlank()) {

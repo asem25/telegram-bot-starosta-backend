@@ -424,9 +424,7 @@ public class ScheduleParserServiceTest {
         // Мокаем вызов restTemplate.getForObject() для любого URL, чтобы возвращать fakeJson
         when(restTemplate.getForObject(anyString(), eq(String.class)))
                 .thenReturn(fakeJsonSuccessForEmpty);
-
-        when(teacherService.findOrCreateTeacherAndAddGroup("00000000-0000-0000-0000-000000000000", "", groupEntity))
-                .thenReturn(teacherEmpty);
+        persistTeachersAsIs();
 
         List<ScheduleEntity> result = scheduleParserService.findScheduleByGroup(groupEntity);
         assertNotNull(result);
@@ -456,14 +454,7 @@ public class ScheduleParserServiceTest {
         when(mapper.readTree(anyString())).thenReturn(new ObjectMapper().readTree(fakeJsonSuccessForAnyOne));
         when(restTemplate.getForObject(anyString(), eq(String.class)))
                 .thenReturn(fakeJsonSuccessForAnyOne);
-
-
-        when(teacherService.findOrCreateTeacherAndAddGroup("00000000-0000-0000-0000-000000000000", "", groupEntity))
-                .thenReturn(teacherEmpty);
-
-
-        when(teacherService.findOrCreateTeacherAndAddGroup("578c176d-1d99-11e0-9baf-1c6f65450efa", "Иванов Иван Иванович", groupEntity))
-                .thenReturn(teacherNonEmpty);
+        persistTeachersAsIs();
 
         List<ScheduleEntity> result = scheduleParserService.findScheduleByGroup(groupEntity);
         assertNotNull(result);
@@ -491,12 +482,7 @@ public class ScheduleParserServiceTest {
         when(mapper.readTree(anyString())).thenReturn(new ObjectMapper().readTree(fakeJsonSuccessWithDoublePairs));
         when(restTemplate.getForObject(anyString(), eq(String.class)))
                 .thenReturn(fakeJsonSuccessWithDoublePairs);
-
-        when(teacherService.findOrCreateTeacherAndAddGroup("578c176a-1d99-11e0-9baf-1c6f65450efa", "Иванов Иван Иванович", groupEntity))
-                .thenReturn(teacherSAU);
-
-        when(teacherService.findOrCreateTeacherAndAddGroup("03d272fd-3eb4-11eb-9812-485b3919ee6d", "Иванов Иван Иванович", groupEntity))
-                .thenReturn(teacherManager);
+        persistTeachersAsIs();
 
         List<ScheduleEntity> result = scheduleParserService.findScheduleByGroup(groupEntity);
         assertNotNull(result);
@@ -529,15 +515,7 @@ public class ScheduleParserServiceTest {
         when(mapper.readTree(anyString())).thenReturn(new ObjectMapper().readTree(fakeJsonSuccessWithoutDoublePairs));
         when(restTemplate.getForObject(anyString(), eq(String.class)))
                 .thenReturn(fakeJsonSuccessWithoutDoublePairs);
-
-        when(teacherService.findOrCreateTeacherAndAddGroup("f253618c-1d99-11e0-9baf-1c6f65450efa", "Иванов Иван Иванович", groupEntity))
-                .thenReturn(teacherNavigation);
-
-        when(teacherService.findOrCreateTeacherAndAddGroup("578c17f8-1d99-11e0-9baf-1c6f65450efa", "Иванов Иван Иванович", groupEntity))
-                .thenReturn(teacherRadio);
-
-        when(teacherService.findOrCreateTeacherAndAddGroup("2f38b9d1-1d9b-11e0-9baf-1c6f65450efa", "Иванов Иван Иванович", groupEntity))
-                .thenReturn(teacherGiro);
+        persistTeachersAsIs();
 
         List<ScheduleEntity> result = scheduleParserService.findScheduleByGroup(groupEntity);
         assertNotNull(result);
@@ -599,6 +577,11 @@ public class ScheduleParserServiceTest {
         assertEquals(date, formattedDateSecond);
         assertEquals(needStartTime, secondPair.getStartTime().toString());
         assertEquals(needEndTime, secondPair.getEndTime().toString());
+    }
+
+    private void persistTeachersAsIs() {
+        when(teacherService.saveEntity(any(UserEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0, UserEntity.class));
     }
 
     @Test

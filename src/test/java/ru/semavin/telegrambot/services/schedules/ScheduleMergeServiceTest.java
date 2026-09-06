@@ -1,150 +1,159 @@
 package ru.semavin.telegrambot.services.schedules;
 
-import lombok.val;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
-import ru.semavin.telegrambot.mapper.ScheduleMapper;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleChangeEntity;
-import ru.semavin.telegrambot.models.enums.LessonType;
-import ru.semavin.telegrambot.repositories.ScheduleRepository;
-import ru.semavin.telegrambot.services.ScheduleChangeService;
-import ru.semavin.telegrambot.services.groups.GroupService;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ExtendWith(MockitoExtension.class)
-public class ScheduleMergeServiceTest {
+class ScheduleMergeServiceTest {
 
-    @InjectMocks
-    private ScheduleMergingService scheduleService;
+    private static final String GROUP = "М3О-203С-22";
+    private static final LocalDate TODAY = LocalDate.of(2026, 3, 10);
+    private static final LocalDate TOMORROW = TODAY.plusDays(1);
 
-    @Mock
-    private SemesterService semesterService;
-
-    @Mock
-    private GroupService groupService;
-
-    @Mock
-    private ScheduleRepository scheduleRepository;
-
-    @Mock
-    private ScheduleMapper scheduleMapper;
-
-    @Mock
-    private ScheduleChangeService scheduleChangeService;
-
-    private final String GROUP_NAME = "М3О-203С-22";
-
-    private final LocalDate TEST_DATE = LocalDate.of(2025, 12, 12);
-
-    private final GroupEntity GROUP_ENTITY = GroupEntity.builder()
-            .groupName(GROUP_NAME)
-            .build();
-
-    private final String TEST_ROOM_1 = "3-321";
-    private final String TEST_ROOM_2 = "3-123";
-
-    private final String TEST_SUB_1 = "Предмет_1";
-    private final String TEST_SUB_2 = "Предмет_2";
-
-    private final LocalTime START_TIME_1 = LocalTime.of(10, 23);
-    private final LocalTime START_TIME_2 = LocalTime.of(10, 33);
-
-    private final LocalTime END_TIME_1 = LocalTime.of(13, 23);
-    private final LocalTime END_TIME_2 = LocalTime.of(13, 33);
-
-    private final String CONTROL_SUM_1 = "sum_1";
-    private final String CONTROL_SUM_2 = "sum_2";
+    private final ScheduleMergingService service =
+            new ScheduleMergingService(null, null, null, null, null);
 
     @Test
-    @DisplayName("Если есть переносы пар, то они должны быть добавлены в текущий")
-    void success_getScheduleForDayWithPostponed() {
-        List<ScheduleDTO> scheduleEntities = buildScheduleList();
+    void returnsCopiesAndDoesNotMutateCachedInput() {
+        ScheduleDTO source = lesson("sum-1", TODAY, 9, "Math", "Ivanov", "101", GROUP);
 
-        val changes = List.of(
-                ScheduleChangeEntity.builder()
-                        .newLessonDate(TEST_DATE)
-                        .newStartTime(START_TIME_1.plusMinutes(100))
-                        .group(GROUP_ENTITY)
-                        .build()
-        );
+        List<ScheduleDTO> result = service.mergeChanges(List.of(source), List.of(
+                change("sum-1", TODAY, null, false, 11)
+        ), TODAY);
 
-        List<ScheduleDTO> result = scheduleService
-                .mergeChanges(scheduleEntities, changes, TEST_DATE);
-
-        assertEquals(3, result.size());
+        assertThat(result).singleElement().satisfies(it -> assertThat(it.getStartTime()).isEqualTo(LocalTime.of(11, 0)));
+        assertThat(source.getStartTime()).isEqualTo(LocalTime.of(9, 0));
     }
 
     @Test
-    @DisplayName("Если нет переносов пар, то просто меняем пары для текущего")
-    void success_getScheduleForDayWithoutPostponed() {
-        List<ScheduleDTO> scheduleEntities = buildScheduleList();
-
-        val newStartTime = START_TIME_1.plusMinutes(100);
-        val newEndTime = END_TIME_1.plusMinutes(100);
-        val description = "123";
-        val newTestRoom = "3-234324";
-
-        val changes = List.of(
-                ScheduleChangeEntity.builder()
-                        .oldLessonDate(TEST_DATE)
-                        .newStartTime(newStartTime)
-                        .newEndTime(newEndTime)
-                        .description(description)
-                        .classroom(newTestRoom)
-                        .group(GROUP_ENTITY)
-                        .oldControlSum(CONTROL_SUM_1)
-                        .build()
+    void processesAllChangesAfterAnOutboundMove() {
+        List<ScheduleDTO> original = List.of(
+                lesson("sum-1", TODAY, 9, "Math", "Ivanov", "101", GROUP),
+                lesson("sum-2", TODAY, 11, "Physics", "Petrov", "102", GROUP)
+        );
+        List<ScheduleChangeEntity> changes = List.of(
+                change("sum-1", TODAY, TOMORROW, false, 9),
+                change("sum-2", TODAY, null, true, 11)
         );
 
-        List<ScheduleDTO> result = scheduleService
-                .mergeChanges(scheduleEntities, changes, TEST_DATE);
+        assertThat(service.mergeChanges(original, changes, TODAY)).isEmpty();
+    }
 
-        assertEquals(2, result.size());
-        assertThat(result).anySatisfy(lesson -> {
-            assertThat(lesson.getControlSum()).isEqualTo(CONTROL_SUM_1);
-            assertThat(lesson.getStartTime()).isEqualTo(newStartTime);
-            assertThat(lesson.getEndTime()).isEqualTo(newEndTime);
-            assertThat(lesson.getDescription()).isEqualTo(description);
-            assertThat(lesson.getClassroom()).isEqualTo(newTestRoom);
+    @Test
+    void moveInsideSameDayReplacesOriginalInsteadOfDuplicatingIt() {
+        ScheduleDTO original = lesson("sum-1", TODAY, 9, "Math", "Ivanov", "101", GROUP);
+
+        List<ScheduleDTO> result = service.mergeChanges(List.of(original), List.of(
+                change("sum-1", TODAY, TODAY, false, 13)
+        ), TODAY);
+
+        assertThat(result).singleElement().satisfies(it -> {
+            assertThat(it.getStartTime()).isEqualTo(LocalTime.of(13, 0));
+            assertThat(it.getControlSum()).isEqualTo("sum-1");
         });
     }
 
-    private List<ScheduleDTO> buildScheduleList() {
-        return List.of(
-                ScheduleDTO.builder()
-                        .lessonDate(TEST_DATE)
-                        .groupName(GROUP_NAME)
-                        .classroom(TEST_ROOM_1)
-                        .startTime(START_TIME_1)
-                        .endTime(END_TIME_1)
-                        .subjectName(TEST_SUB_1)
-                        .lessonType(LessonType.PRACTICAL.name())
-                        .controlSum(CONTROL_SUM_1)
-                        .build(),
-                ScheduleDTO.builder()
-                        .lessonDate(TEST_DATE)
-                        .groupName(GROUP_NAME)
-                        .classroom(TEST_ROOM_2)
-                        .startTime(START_TIME_2)
-                        .endTime(END_TIME_2)
-                        .subjectName(TEST_SUB_2)
-                        .lessonType(LessonType.PRACTICAL.name())
-                        .controlSum(CONTROL_SUM_2)
-                        .build()
-        );
+    @Test
+    void addsLessonMovedFromAnotherDay() {
+        ScheduleChangeEntity inbound = change("sum-1", TOMORROW, TODAY, false, 15);
+
+        assertThat(service.mergeChanges(List.of(), List.of(inbound), TODAY))
+                .singleElement()
+                .satisfies(it -> {
+                    assertThat(it.getLessonDate()).isEqualTo(TODAY);
+                    assertThat(it.getStartTime()).isEqualTo(LocalTime.of(15, 0));
+                    assertThat(it.getSubjectName()).isEqualTo("Changed subject");
+                });
     }
 
+    @Test
+    void movedLessonKeepsOpaqueOccurrenceIdAndVersionOnTargetDate() {
+        UUID occurrenceId = UUID.randomUUID();
+        UUID seriesId = UUID.randomUUID();
+        ScheduleChangeEntity inbound = change("sum-1", TOMORROW, TODAY, false, 15);
+        inbound.setOccurrenceId(occurrenceId);
+        inbound.setSeriesId(seriesId);
+        inbound.setVersion(3L);
 
+        assertThat(service.mergeChanges(List.of(), List.of(inbound), TODAY))
+                .singleElement()
+                .satisfies(it -> {
+                    assertThat(it.getLessonOccurrenceId()).isEqualTo(occurrenceId);
+                    assertThat(it.getLessonSeriesId()).isEqualTo(seriesId);
+                    assertThat(it.getVersion()).isEqualTo(3);
+                });
+    }
+
+    @Test
+    void ignoresChangeThatDoesNotBelongToRequestedDay() {
+        ScheduleDTO original = lesson("sum-1", TODAY, 9, "Math", "Ivanov", "101", GROUP);
+        ScheduleChangeEntity unrelated = change("sum-2", TOMORROW, TOMORROW.plusDays(1), false, 15);
+
+        assertThat(service.mergeChanges(List.of(original), List.of(unrelated), TODAY))
+                .usingRecursiveFieldByFieldElementComparator()
+                .containsExactly(original);
+    }
+
+    @Test
+    void mergesOnlyTrulyIdenticalLessonsAcrossGroups() {
+        Map<String, List<ScheduleDTO>> schedules = new LinkedHashMap<>();
+        schedules.put("A", List.of(
+                lesson("a1", TODAY, 9, "Math", "Ivanov", "101", "A"),
+                lesson("a2", TODAY, 11, "Physics", "Petrov", "201", "A")
+        ));
+        schedules.put("B", List.of(
+                lesson("b1", TODAY, 9, "Math", "Ivanov", "101", "B"),
+                lesson("b2", TODAY, 11, "Physics", "Sidorov", "202", "B")
+        ));
+
+        List<ScheduleDTO> result = service.mergeMultiGroups(schedules);
+
+        assertThat(result).hasSize(3);
+        assertThat(result).filteredOn(it -> it.getStartTime().equals(LocalTime.of(9, 0)))
+                .singleElement().extracting(ScheduleDTO::getGroupName).isEqualTo("A, B");
+        assertThat(result).filteredOn(it -> it.getStartTime().equals(LocalTime.of(11, 0)))
+                .extracting(ScheduleDTO::getGroupName).containsExactlyInAnyOrder("A", "B");
+    }
+
+    private ScheduleChangeEntity change(String sum, LocalDate oldDate, LocalDate newDate,
+                                        boolean deleted, int newHour) {
+        return ScheduleChangeEntity.builder()
+                .oldControlSum(sum)
+                .oldLessonDate(oldDate)
+                .newLessonDate(newDate)
+                .newStartTime(LocalTime.of(newHour, 0))
+                .newEndTime(LocalTime.of(newHour + 1, 30))
+                .subjectName("Changed subject")
+                .lessonType("ЛК")
+                .teacherName("Changed teacher")
+                .classroom("303")
+                .group(GroupEntity.builder().groupName(GROUP).build())
+                .deleted(deleted)
+                .build();
+    }
+
+    private ScheduleDTO lesson(String sum, LocalDate date, int hour, String subject,
+                               String teacher, String room, String group) {
+        return ScheduleDTO.builder()
+                .controlSum(sum)
+                .lessonDate(date)
+                .startTime(LocalTime.of(hour, 0))
+                .endTime(LocalTime.of(hour + 1, 30))
+                .subjectName(subject)
+                .lessonType("ЛК")
+                .teacherName(teacher)
+                .classroom(room)
+                .groupName(group)
+                .build();
+    }
 }

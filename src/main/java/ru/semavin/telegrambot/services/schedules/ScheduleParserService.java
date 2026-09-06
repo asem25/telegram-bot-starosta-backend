@@ -156,7 +156,7 @@ public class ScheduleParserService {
     }
 
     private String getJsonOfScheduleStudentWithGroupName(String groupName) {
-        log.info("Получение json для группы {}", groupName);
+        log.debug("Получение json для группы {}", groupName);
         return restTemplate.getForObject(SCHEDULE_URL + getMd5Hash(groupName) + ".json", String.class);
     }
 
@@ -346,7 +346,6 @@ public class ScheduleParserService {
 
     private static LessonType mapLessonType(String badgeText) {
         return switch (badgeText) {
-            case "ЛК" -> LessonType.LECTURE;
             case "ПЗ" -> LessonType.PRACTICAL;
             case "ЛР" -> LessonType.LAB;
             case "Экзамен" -> LessonType.EXAM;

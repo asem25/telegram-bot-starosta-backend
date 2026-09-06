@@ -17,6 +17,7 @@ import ru.semavin.telegrambot.services.groups.GroupService;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
 import ru.semavin.telegrambot.utils.exceptions.UserNotFoundException;
 import ru.semavin.telegrambot.utils.exceptions.UserWithTelegramIdAlreadyExistsException;
+import ru.semavin.telegrambot.utils.exceptions.MiniAppGroupConflictException;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +69,66 @@ public class UserService {
     public UserDTO getUserEntity(String username) {
         return userMapper.userToUserDTO(userRepository.findByUsername(username)
                 .orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)));
+    }
+
+    @Transactional(readOnly = true)
+    public UserDTO getUserByTelegramId(Long telegramId) {
+        try {
+            return userMapper.userToUserDTO(findByTelegramId(telegramId));
+        }catch (UserNotFoundException e) {
+            log.debug("User not found. [{}]", telegramId);
+            throw ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND);
+        }
+    }
+
+    /**
+     * Assigns a group once for a Telegram Mini App user. The conditional update
+     * prevents two concurrent requests from silently replacing one another.
+     */
+    @Transactional
+    public UserDTO assignInitialGroup(Long telegramId, String requestedGroupName) {
+        String normalizedGroupName = requestedGroupName.trim();
+        GroupEntity requestedGroup = groupService.findEntityByName(normalizedGroupName);
+
+        int updated = userRepository.assignInitialGroup(telegramId, requestedGroup.getId());
+        UserEntity currentUser = userRepository.findByTelegramId(telegramId)
+                .orElseThrow(() -> ExceptionFabric.create(
+                        UserNotFoundException.class,
+                        ExceptionMessages.USER_NOT_FOUND));
+
+        if (updated == 0 && (currentUser.getGroup() == null
+                || !currentUser.getGroup().getId().equals(requestedGroup.getId()))) {
+            throw new MiniAppGroupConflictException("Учебная группа уже выбрана и не может быть изменена");
+        }
+
+        return userMapper.userToUserDTO(currentUser);
+    }
+
+    /**
+     * Registers a user on their first valid Telegram Mini App login and keeps
+     * Telegram profile fields current on subsequent logins. The repository
+     * upsert is atomic and preserves the existing role and group.
+     */
+    @Transactional
+    public UserDTO provisionTelegramUser(
+            Long telegramId,
+            String username,
+            String firstName,
+            String lastName
+    ) {
+        userRepository.upsertTelegramUser(telegramId, username, firstName, lastName);
+        return userMapper.userToUserDTO(userRepository.findByTelegramId(telegramId)
+                .orElseThrow(() -> ExceptionFabric.create(
+                        UserNotFoundException.class,
+                        ExceptionMessages.USER_NOT_FOUND)));
+    }
+
+    @Transactional(readOnly = true)
+    public UserEntity findByTelegramId(Long telegramId) {
+        return userRepository.findByTelegramId(telegramId)
+                .orElseThrow(() -> ExceptionFabric.create(
+                        UserNotFoundException.class,
+                        ExceptionMessages.USER_NOT_FOUND));
     }
 
     @Transactional

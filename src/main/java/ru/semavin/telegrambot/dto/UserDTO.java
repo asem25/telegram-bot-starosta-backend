@@ -23,7 +23,6 @@ public class UserDTO {
     @Schema(description = "Идентификатор пользователя в Telegram", example = "123456789")
     private Long telegramId;
 
-    @NotNull(message = "Тэг пользователя не может быть null")
     @Size(min = 3, max = 50, message = "Тэг должно быть от 3 до 50 символов")
     @Schema(description = "Тэг пользователя в телеграмм", example = "john_doe")
     private String username;

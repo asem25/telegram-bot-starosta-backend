@@ -13,6 +13,9 @@ public interface ScheduleMapper {
     ScheduleEntity toScheduleEntity(ScheduleDTO dto);
 
     @Mapping(target = "id", source = "id")
+    @Mapping(target = "lessonOccurrenceId", source = "occurrenceId")
+    @Mapping(target = "lessonSeriesId", expression = "java(ru.semavin.telegrambot.services.schedules.ScheduleSeriesIdService.resolve(entity))")
+    @Mapping(target = "version", constant = "0L")
     @Mapping(target = "groupName", source = "group.groupName")
     @Mapping(target = "teacherName", expression = "java(entity.getTeacher().getFirstName() + \" \" + entity.getTeacher().getPatronymic() + \" \" + entity.getTeacher().getLastName())")
     ScheduleDTO toScheduleDTO(ScheduleEntity entity);

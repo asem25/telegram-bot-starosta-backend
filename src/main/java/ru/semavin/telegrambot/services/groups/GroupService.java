@@ -37,11 +37,11 @@ public class GroupService {
     @PostConstruct
     @Transactional
     public void init() {
-        groupParserService.findAllGroups().forEach(group -> {
-            if (groupRepository.findByGroupNameIgnoreCase(group.getGroupName()).isEmpty()) {
-                groupRepository.save(group);
-            }
-        });
+//        groupParserService.findAllGroups().forEach(group -> {
+//            if (groupRepository.findByGroupNameIgnoreCase(group.getGroupName()).isEmpty()) {
+//                groupRepository.save(group);
+//            }
+//        });
     }
 
     public GroupDTO findDtoByName(String name) {

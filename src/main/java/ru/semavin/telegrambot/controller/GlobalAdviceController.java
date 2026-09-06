@@ -76,11 +76,76 @@ public class GlobalAdviceController {
                         .error_description(ex.getMessage())
                         .build());
     }
-    @ExceptionHandler(KeyNotEqualsException.class)
-    public ResponseEntity<ErrorResponseDTO> handleKeyNotEqualsException(KeyNotEqualsException ex) {
+    @ExceptionHandler(TelegramAuthenticationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleTelegramAuthenticationException(
+            TelegramAuthenticationException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.UNAUTHORIZED.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(MiniAppRequestException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMiniAppRequestException(MiniAppRequestException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.BAD_REQUEST.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+    @ExceptionHandler(MiniAppGroupConflictException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMiniAppGroupConflictException(MiniAppGroupConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.CONFLICT.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+    @ExceptionHandler(MiniAppRoleConflictException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMiniAppRoleConflictException(MiniAppRoleConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.CONFLICT.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+    @ExceptionHandler(ScheduleChangeForbiddenException.class)
+    public ResponseEntity<ErrorResponseDTO> handleScheduleChangeForbiddenException(
+            ScheduleChangeForbiddenException ex
+    ) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ErrorResponseDTO.builder()
                         .error(String.valueOf(HttpStatus.FORBIDDEN.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(AbsenceForbiddenException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAbsenceForbiddenException(AbsenceForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.FORBIDDEN.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(ScheduleChangeConflictException.class)
+    public ResponseEntity<ErrorResponseDTO> handleScheduleChangeConflictException(
+            ScheduleChangeConflictException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.CONFLICT.value()))
+                        .error_description(ex.getMessage())
+                        .build());
+    }
+    @ExceptionHandler(AuthConfigurationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAuthConfigurationException(AuthConfigurationException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErrorResponseDTO.builder()
+                        .error(String.valueOf(HttpStatus.SERVICE_UNAVAILABLE.value()))
                         .error_description(ex.getMessage())
                         .build());
     }

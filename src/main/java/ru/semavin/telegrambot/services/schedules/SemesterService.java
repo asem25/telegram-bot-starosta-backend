@@ -21,9 +21,6 @@ public class SemesterService {
     private final LocalDate semesterStart;
     private final LocalDate semesterEnd;
 
-
-
-
     /**
      * Конструктор, принимающий дату начала семестра в виде строки из конфигурации.
      *
@@ -32,9 +29,20 @@ public class SemesterService {
     public SemesterService(@Value("${semester.start}") String semesterStartStr,
                            @Value("${semester.end}") String semesterEndStr) {
         // Определяем формат даты (например, "dd.MM.yyyy")
-        this.semesterStart = LocalDate.parse(semesterStartStr, DateUtils.FORMATTER);
-        this.semesterEnd = LocalDate.parse(semesterEndStr, DateUtils.FORMATTER);
+        this.semesterStart = parseConfiguredDate(semesterStartStr);
+        this.semesterEnd = parseConfiguredDate(semesterEndStr);
+        if (semesterEnd.isBefore(semesterStart)) {
+            throw new IllegalStateException("Дата окончания семестра не может быть раньше даты начала");
+        }
         log.info("Дата начала семестра установлена через конфигурацию: {}", this.semesterStart);
+    }
+
+    private LocalDate parseConfiguredDate(String value) {
+        try {
+            return LocalDate.parse(value);
+        } catch (RuntimeException ignored) {
+            return LocalDate.parse(value, DateUtils.FORMATTER);
+        }
     }
 
     /**

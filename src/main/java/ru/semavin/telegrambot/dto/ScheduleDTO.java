@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.UUID;
 
 /**
  * DTO для расписания.
@@ -17,6 +18,9 @@ import java.time.LocalTime;
 @Schema(description = "DTO для расписания")
 public class ScheduleDTO {
     private Long id;
+    private UUID lessonOccurrenceId;
+    private UUID lessonSeriesId;
+    private long version;
     @Schema(description = "Название группы", example = "М3О-303С-22")
     private String groupName;
 

@@ -15,6 +15,9 @@ import ru.semavin.telegrambot.repositories.ScheduleRepository;
 import ru.semavin.telegrambot.services.groups.GroupService;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -32,13 +35,34 @@ public class ScheduleActualizationService {
         GroupEntity group = groupService.findEntityByName(groupName);
         List<ScheduleEntity> scheduleEntities = scheduleParserService.findScheduleByGroup(group);
 
+        Map<String, ScheduleEntity> existingByControlSum = scheduleRepository.findAllByGroup(group).stream()
+                .filter(entity -> entity.getControlSum() != null)
+                .collect(Collectors.toMap(
+                        ScheduleEntity::getControlSum,
+                        Function.identity(),
+                        (first, ignored) -> first
+                ));
+        List<ScheduleEntity> reconciledSchedule = scheduleEntities.stream()
+                .map(parsed -> reconcileIdentity(parsed, existingByControlSum.get(parsed.getControlSum())))
+                .toList();
+
         scheduleRepository.deleteAllByGroup(group);
 
         log.info("Расписание для группы {} найдено", group);
 
-        scheduleRepository.saveAllAndFlush(scheduleEntities);
+        scheduleRepository.saveAllAndFlush(reconciledSchedule);
 
-        log.info("БД очищена. Расписание группы [{}] загружено.", groupName);
+        log.info("Расписание группы [{}] актуализировано.", groupName);
+    }
+
+    private ScheduleEntity reconcileIdentity(ScheduleEntity parsed, ScheduleEntity existing) {
+        if (existing == null) {
+            return parsed;
+        }
+        return parsed.toBuilder()
+                .occurrenceId(existing.getOccurrenceId())
+                .seriesId(existing.getSeriesId())
+                .build();
     }
 
     @Transactional

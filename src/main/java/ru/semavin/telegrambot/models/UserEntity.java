@@ -16,6 +16,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(onlyExplicitlyIncluded = true)
 public class UserEntity {
 
     /**
@@ -58,6 +59,7 @@ public class UserEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
+    @ToString.Include
     private UserRole role;
 
     /**
@@ -74,6 +76,17 @@ public class UserEntity {
     @Column(name = "teacher_uuid", unique = true)
     private String teacherUuid;
 
+    @Column(name = "schedule_notifications_enabled", nullable = false)
+    @Builder.Default
+    private boolean scheduleNotificationsEnabled = true;
+
+    @Column(name = "deadline_notifications_enabled", nullable = false)
+    @Builder.Default
+    private boolean deadlineNotificationsEnabled = true;
+
+    @Column(name = "telegram_write_access_granted", nullable = false)
+    private boolean telegramWriteAccessGranted;
+
     /**
      * Список групп, в которых преподаёт данный пользователь (при роли TEACHER).
      */
@@ -86,19 +99,4 @@ public class UserEntity {
     @Builder.Default
     private Set<GroupEntity> teachingGroups = new HashSet<>();
 
-    @Override
-    public String toString() {
-        return "UserEntity{" +
-                "id=" + id +
-                ", telegramId=" + telegramId +
-                ", username='" + username + '\'' +
-                ", patronymic='" + patronymic + '\'' +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", role=" + role +
-                ", group=" + group.getGroupName() +
-                ", teacherUuid='" + teacherUuid + '\'' +
-                ", teachingGroups=" + teachingGroups +
-                '}';
-    }
 }

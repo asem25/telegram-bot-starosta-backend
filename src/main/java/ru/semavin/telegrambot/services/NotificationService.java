@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.semavin.telegrambot.dto.NotificationDTO;
 import ru.semavin.telegrambot.mapper.NotificationMapper;
-import ru.semavin.telegrambot.models.AbsenceEntity;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.NotificationEntity;
 import ru.semavin.telegrambot.models.UserEntity;
