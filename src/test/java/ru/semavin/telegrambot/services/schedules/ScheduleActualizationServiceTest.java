@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 class ScheduleActualizationServiceTest {
@@ -35,7 +37,8 @@ class ScheduleActualizationServiceTest {
         when(repository.findAllByGroup(group)).thenReturn(List.of(existing));
         when(parser.findScheduleByGroup(group)).thenReturn(List.of(parsed));
         ScheduleActualizationService service = new ScheduleActualizationService(
-                repository, parser, mock(ScheduleMapper.class), groupService);
+                repository, parser, mock(ScheduleMapper.class), groupService,
+                mock(ScheduleSyncStatusService.class));
 
         service.actualizationScheduleGroup("GROUP-1");
 
@@ -46,6 +49,44 @@ class ScheduleActualizationServiceTest {
         assertNotSame(parsed, reconciled);
         assertSame(occurrenceId, reconciled.getOccurrenceId());
         assertSame(seriesId, reconciled.getSeriesId());
+    }
+
+    @Test
+    void recordsSyncOnlyAfterScheduleWasSavedSuccessfully() {
+        ScheduleRepository repository = mock(ScheduleRepository.class);
+        ScheduleParserService parser = mock(ScheduleParserService.class);
+        GroupService groupService = mock(GroupService.class);
+        ScheduleSyncStatusService syncStatusService = mock(ScheduleSyncStatusService.class);
+        GroupEntity group = GroupEntity.builder().id(1L).groupName("GROUP-1").build();
+        when(groupService.findEntityByName("GROUP-1")).thenReturn(group);
+        when(repository.findAllByGroup(group)).thenReturn(List.of());
+        when(parser.findScheduleByGroup(group)).thenReturn(List.of(lesson(group)));
+        ScheduleActualizationService service = new ScheduleActualizationService(
+                repository, parser, mock(ScheduleMapper.class), groupService, syncStatusService);
+
+        service.actualizationScheduleGroup("GROUP-1");
+
+        verify(syncStatusService).markSuccessfulSync("GROUP-1");
+    }
+
+    @Test
+    void doesNotRecordSyncWhenSavingFails() {
+        ScheduleRepository repository = mock(ScheduleRepository.class);
+        ScheduleParserService parser = mock(ScheduleParserService.class);
+        GroupService groupService = mock(GroupService.class);
+        ScheduleSyncStatusService syncStatusService = mock(ScheduleSyncStatusService.class);
+        GroupEntity group = GroupEntity.builder().id(1L).groupName("GROUP-1").build();
+        when(groupService.findEntityByName("GROUP-1")).thenReturn(group);
+        when(repository.findAllByGroup(group)).thenReturn(List.of());
+        when(parser.findScheduleByGroup(group)).thenReturn(List.of(lesson(group)));
+        doThrow(new RuntimeException("save failed")).when(repository).saveAllAndFlush(org.mockito.ArgumentMatchers.any());
+        ScheduleActualizationService service = new ScheduleActualizationService(
+                repository, parser, mock(ScheduleMapper.class), groupService, syncStatusService);
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> service.actualizationScheduleGroup("GROUP-1"));
+
+        verify(syncStatusService, never()).markSuccessfulSync("GROUP-1");
     }
 
     private ScheduleEntity lesson(GroupEntity group) {

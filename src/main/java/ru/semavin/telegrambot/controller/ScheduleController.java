@@ -29,10 +29,12 @@ public class ScheduleController {
     )
     public ResponseEntity<String> getSemesterScheduleFeed(
             @Parameter(description = "Название группы", required = true)
-            @RequestParam String groupName
+            @RequestParam String groupName,
+            @Parameter(description = "Добавить дату последней успешной синхронизации расписания")
+            @RequestParam(defaultValue = "false") boolean showLastUpdate
     ) {
         log.info("Пришел запрос на получение календаря для группы {}", groupName);
-        String ics = schedulerCalendarISCService.getIscCalendarByGroupName(groupName);
+        String ics = schedulerCalendarISCService.getIscCalendarByGroupName(groupName, showLastUpdate);
 
         log.info("Запрос на получение календаря для группы [{}] успешно отработан", groupName);
         return ResponseEntity

@@ -28,6 +28,7 @@ public class ScheduleActualizationService {
     private final ScheduleParserService scheduleParserService;
     private final ScheduleMapper scheduleMapper;
     private final GroupService groupService;
+    private final ScheduleSyncStatusService scheduleSyncStatusService;
 
     @Transactional
     @CacheEvict(value = {"scheduleCache", "scheduleDay"}, allEntries = true)
@@ -51,6 +52,8 @@ public class ScheduleActualizationService {
         log.info("Расписание для группы {} найдено", group);
 
         scheduleRepository.saveAllAndFlush(reconciledSchedule);
+
+        scheduleSyncStatusService.markSuccessfulSync(groupName);
 
         log.info("Расписание группы [{}] актуализировано.", groupName);
     }

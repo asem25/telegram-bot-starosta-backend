@@ -6,6 +6,7 @@ import ru.semavin.telegrambot.services.UserService;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,8 +16,9 @@ import static org.mockito.Mockito.when;
 
 class SchedulerCalendarISCServiceTest {
     private final ScheduleService scheduleService = mock(ScheduleService.class);
+    private final ScheduleSyncStatusService syncStatusService = mock(ScheduleSyncStatusService.class);
     private final SchedulerCalendarISCService service =
-            new SchedulerCalendarISCService(scheduleService, mock(UserService.class));
+            new SchedulerCalendarISCService(scheduleService, mock(UserService.class), syncStatusService);
 
     @Test
     void groupFeedUsesStableOccurrenceUidAndMovedTime() {
@@ -47,5 +49,33 @@ class SchedulerCalendarISCServiceTest {
 
         assertThat(service.getIscCalendarByGroupName("GROUP-1"))
                 .doesNotContain("BEGIN:VEVENT");
+    }
+
+    @Test
+    void lastUpdateBadgeIsDisabledByDefault() {
+        when(scheduleService.getScheduleForISC("GROUP-1")).thenReturn(List.of());
+        when(syncStatusService.getLastSuccessfulSync("GROUP-1"))
+                .thenReturn(java.util.Optional.of(Instant.parse("2026-09-06T11:30:00Z")));
+
+        assertThat(service.getIscCalendarByGroupName("GROUP-1"))
+                .doesNotContain("Обновлено с сайта МАИ");
+    }
+
+    @Test
+    void enabledLastUpdateBadgeIsTransparentAndUsesStableUid() {
+        when(scheduleService.getScheduleForISC("GROUP-1")).thenReturn(List.of());
+        when(syncStatusService.getLastSuccessfulSync("GROUP-1"))
+                .thenReturn(java.util.Optional.of(Instant.parse("2026-09-06T11:30:00Z")));
+
+        String first = service.getIscCalendarByGroupName("GROUP-1", true);
+        String second = service.getIscCalendarByGroupName("GROUP-1", true);
+
+        assertThat(first)
+                .contains("SUMMARY:Обновлено с сайта МАИ · 06.09 14:30")
+                .contains("DTSTART;VALUE=DATE:20260906")
+                .contains("DTEND;VALUE=DATE:20260907")
+                .contains("TRANSP:TRANSPARENT")
+                .containsPattern("UID:[0-9a-f-]+@starosta");
+        assertThat(second).isEqualTo(first);
     }
 }

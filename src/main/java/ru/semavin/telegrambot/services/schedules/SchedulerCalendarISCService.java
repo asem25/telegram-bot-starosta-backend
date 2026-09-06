@@ -7,9 +7,13 @@ import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.dto.ScheduleDTO;
 import ru.semavin.telegrambot.services.UserService;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -34,14 +38,22 @@ public class SchedulerCalendarISCService {
 
     private final ScheduleService scheduleService;
     private final UserService userService;
+    private final ScheduleSyncStatusService scheduleSyncStatusService;
 
 
     private static final DateTimeFormatter ICS_DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
+    private static final DateTimeFormatter ICS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final DateTimeFormatter UPDATE_LABEL_FORMATTER =
+            DateTimeFormatter.ofPattern("dd.MM HH:mm");
 
     public String getIscCalendarByGroupName(String groupName) {
+        return getIscCalendarByGroupName(groupName, false);
+    }
+
+    public String getIscCalendarByGroupName(String groupName, boolean showLastUpdate) {
         val timeStart = System.currentTimeMillis();
-        val ics = buildCalendarISC(groupName);
+        val ics = buildCalendarISC(groupName, showLastUpdate);
         log.debug("Сформирован .ics за семестр для группы {}. Длина файла: {} символов",
                 groupName, ics.length());
         val timeEnd = System.currentTimeMillis();
@@ -59,7 +71,8 @@ public class SchedulerCalendarISCService {
     }
 
     private String buildCalendarISC(
-            String groupName
+            String groupName,
+            boolean showLastUpdate
     ) {
         ZoneId zoneId = ZoneId.of("Europe/Moscow");
         val schDtosList = scheduleService.getScheduleForISC(groupName);
@@ -76,9 +89,30 @@ public class SchedulerCalendarISCService {
                 processBuildForSchedule(groupName, dto, zoneId, sb)
         );
 
+        if (showLastUpdate) {
+            scheduleSyncStatusService.getLastSuccessfulSync(groupName)
+                    .ifPresent(lastUpdate -> processBuildForLastUpdate(groupName, lastUpdate, zoneId, sb));
+        }
+
         sb.append(END_VCALENDAR).append(CRLF);
 
         return sb.toString();
+    }
+
+    private void processBuildForLastUpdate(String groupName, Instant lastUpdate, ZoneId zoneId, StringBuilder sb) {
+        ZonedDateTime localUpdate = lastUpdate.atZone(zoneId);
+        String uid = UUID.nameUUIDFromBytes(
+                ("schedule-last-update:" + groupName).getBytes(StandardCharsets.UTF_8)) + "@starosta";
+
+        sb.append(BEGIN_VEVENT).append(CRLF);
+        sb.append("DTSTART;VALUE=DATE:").append(localUpdate.format(ICS_DATE_FORMATTER)).append(CRLF);
+        sb.append("DTEND;VALUE=DATE:").append(localUpdate.plusDays(1).format(ICS_DATE_FORMATTER)).append(CRLF);
+        sb.append(UID).append(uid).append(CRLF);
+        sb.append(SUMMARY)
+                .append(escapeText("Обновлено с сайта МАИ · " + localUpdate.format(UPDATE_LABEL_FORMATTER)))
+                .append(CRLF);
+        sb.append("TRANSP:TRANSPARENT").append(CRLF);
+        sb.append(END_VEVENT).append(CRLF);
     }
 
     private String buildTeacherCalendarISC(
