@@ -26,11 +26,11 @@ public class RequestService {
 
     @Transactional
     public RequestDTO save(RequestDTO requestDTO) {
-        log.info("Пришел запрос на добавление в группу {}, от пользователя {}", requestDTO.getGroupName(), requestDTO.getTelegramTagUser());
+        log.info("Пришел запрос на добавление в группу {}", requestDTO.getGroupName());
         GroupEntity group = groupRepository.findByGroupNameIgnoreCase(requestDTO.getGroupName()).orElseThrow(
                 () -> ExceptionFabric.create(GroupNotFoundException.class, ExceptionMessages.GROUP_NOT_FOUND)
         );
-        UserEntity userEntity = userRepository.findByUsername(requestDTO.getTelegramTagUser()).orElseThrow(
+        UserEntity userEntity = userRepository.findById(requestDTO.getUserId()).orElseThrow(
                 () -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)
         );
         requestRepository.save(
@@ -38,7 +38,7 @@ public class RequestService {
                         .group(group)
                         .user(userEntity)
                         .build());
-        log.info("Запрос {} сохранен!", requestDTO.getTelegramTagUser());
+        log.info("Запрос на добавление в группу сохранен");
         return requestDTO;
     }
 }

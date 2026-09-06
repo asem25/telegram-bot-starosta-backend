@@ -37,6 +37,7 @@ class NotificationPreferencesServiceTest {
                 .id(11L)
                 .telegramId(1001L)
                 .build();
+        when(userRepository.findById(11L)).thenReturn(Optional.of(user));
         when(userRepository.findByTelegramId(1001L)).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenAnswer(invocation -> invocation.getArgument(0));
     }
@@ -44,13 +45,13 @@ class NotificationPreferencesServiceTest {
     @Test
     void savesPreferencesAndReturnsThemOnNextRead() {
         NotificationSettingsResponse updated = service.updateSettings(
-                1001L,
+                11L,
                 new UpdateNotificationSettingsRequest(false, true, true));
 
         assertFalse(updated.scheduleChangesEnabled());
         assertTrue(updated.deadlineRemindersEnabled());
         assertTrue(updated.telegramWriteAccessGranted());
-        assertEquals(updated, service.getSettings(1001L));
+        assertEquals(updated, service.getSettings(11L));
         verify(userRepository).save(user);
     }
 
@@ -69,7 +70,7 @@ class NotificationPreferencesServiceTest {
                 .build();
         when(historyRepository.findTop100ByUserOrderByCreatedAtDesc(user)).thenReturn(List.of(event));
 
-        List<NotificationHistoryResponse> history = service.getHistory(1001L);
+        List<NotificationHistoryResponse> history = service.getHistory(11L);
 
         assertEquals(1, history.size());
         assertEquals(eventId, history.getFirst().id());
@@ -82,7 +83,7 @@ class NotificationPreferencesServiceTest {
 
         service.synchronizeTelegramWriteAccess(1001L, false);
 
-        assertFalse(service.getSettings(1001L).telegramWriteAccessGranted());
+        assertFalse(service.getSettings(11L).telegramWriteAccessGranted());
         verify(userRepository).save(user);
     }
 }

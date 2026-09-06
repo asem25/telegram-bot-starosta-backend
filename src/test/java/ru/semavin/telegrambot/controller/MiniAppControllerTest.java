@@ -66,10 +66,8 @@ class MiniAppControllerTest {
                 studentAbsenceService,
                 notificationPreferencesService);
 
-        when(accessTokenService.requireTelegramId("Bearer token")).thenReturn(123456789L);
-        when(userService.getUserByTelegramId(123456789L)).thenReturn(UserDTO.builder()
-                .telegramId(123456789L)
-                .username("student")
+        when(accessTokenService.requireUserId("Bearer token")).thenReturn(73L);
+        when(userService.getUserById(73L)).thenReturn(UserDTO.builder()
                 .groupName("GROUP-1")
                 .build());
         when(scheduleService.getScheduleForDay(anyString(), anyString())).thenReturn(List.of());
@@ -116,8 +114,8 @@ class MiniAppControllerTest {
                 .title("Task")
                 .description("Description")
                 .dueDate(LocalDate.of(2026, 9, 10))
-                .username("creator")
-                .receivers(List.of("member"))
+                .creatorId(73L)
+                .receiverIds(List.of(74L))
                 .notified1Day(true)
                 .build()));
 
@@ -130,24 +128,24 @@ class MiniAppControllerTest {
 
     @Test
     void claimsStarostaForBearerIdentityOnly() {
-        UserDTO expected = UserDTO.builder().telegramId(123456789L).role("STAROSTA").build();
-        when(starostaService.claimOwnGroup(123456789L)).thenReturn(expected);
+        UserDTO expected = UserDTO.builder().role("STAROSTA").build();
+        when(starostaService.claimOwnGroup(73L)).thenReturn(expected);
 
         assertEquals(expected, controller.claimStarosta("Bearer token").getBody());
 
-        verify(accessTokenService).requireTelegramId("Bearer token");
-        verify(starostaService).claimOwnGroup(123456789L);
+        verify(accessTokenService).requireUserId("Bearer token");
+        verify(starostaService).claimOwnGroup(73L);
     }
 
     @Test
     void releasesStarostaForBearerIdentityOnly() {
-        UserDTO expected = UserDTO.builder().telegramId(123456789L).role("STUDENT").build();
-        when(starostaService.releaseOwnGroup(123456789L)).thenReturn(expected);
+        UserDTO expected = UserDTO.builder().role("STUDENT").build();
+        when(starostaService.releaseOwnGroup(73L)).thenReturn(expected);
 
         assertEquals(expected, controller.releaseStarosta("Bearer token").getBody());
 
-        verify(accessTokenService).requireTelegramId("Bearer token");
-        verify(starostaService).releaseOwnGroup(123456789L);
+        verify(accessTokenService).requireUserId("Bearer token");
+        verify(starostaService).releaseOwnGroup(73L);
     }
 
     @Test
@@ -156,7 +154,7 @@ class MiniAppControllerTest {
                 LocalDate.of(2026, 9, 2), LocalDate.of(2026, 9, 4), "Причина");
         StudentAbsenceResponse expected = new StudentAbsenceResponse(
                 7L, request.startDate(), request.endDate(), request.reason());
-        when(studentAbsenceService.create(123456789L, request)).thenReturn(expected);
+        when(studentAbsenceService.create(73L, request)).thenReturn(expected);
 
         var created = controller.createAbsence("Bearer token", request);
         var listed = controller.getOwnAbsences("Bearer token");
@@ -167,19 +165,19 @@ class MiniAppControllerTest {
         assertEquals(200, listed.getStatusCode().value());
         assertEquals(204, deleted.getStatusCode().value());
         assertNull(deleted.getBody());
-        verify(studentAbsenceService).getOwn(123456789L);
-        verify(studentAbsenceService).deleteOwn(123456789L, 7L);
+        verify(studentAbsenceService).getOwn(73L);
+        verify(studentAbsenceService).deleteOwn(73L, 7L);
     }
 
     @Test
     void groupAbsencesAreDelegatedWithBearerIdentityOnly() {
         List<GroupStudentAbsenceResponse> expected = List.of(new GroupStudentAbsenceResponse(
-                8L, 2L, "Студент", LocalDate.of(2026, 9, 2), LocalDate.of(2026, 9, 2), null));
-        when(studentAbsenceService.getOwnGroup(123456789L)).thenReturn(expected);
+                8L, 2L, LocalDate.of(2026, 9, 2), LocalDate.of(2026, 9, 2), null));
+        when(studentAbsenceService.getOwnGroup(73L)).thenReturn(expected);
 
         assertEquals(expected, controller.getOwnGroupAbsences("Bearer token").getBody());
 
-        verify(studentAbsenceService).getOwnGroup(123456789L);
+        verify(studentAbsenceService).getOwnGroup(73L);
     }
 
     @Test
@@ -187,14 +185,14 @@ class MiniAppControllerTest {
         NotificationSettingsResponse initial = new NotificationSettingsResponse(true, true, false);
         UpdateNotificationSettingsRequest request = new UpdateNotificationSettingsRequest(false, true, true);
         NotificationSettingsResponse updated = new NotificationSettingsResponse(false, true, true);
-        when(notificationPreferencesService.getSettings(123456789L)).thenReturn(initial);
-        when(notificationPreferencesService.updateSettings(123456789L, request)).thenReturn(updated);
+        when(notificationPreferencesService.getSettings(73L)).thenReturn(initial);
+        when(notificationPreferencesService.updateSettings(73L, request)).thenReturn(updated);
 
         assertEquals(initial, controller.getNotificationSettings("Bearer token").getBody());
         assertEquals(updated, controller.updateNotificationSettings("Bearer token", request).getBody());
 
-        verify(notificationPreferencesService).getSettings(123456789L);
-        verify(notificationPreferencesService).updateSettings(123456789L, request);
+        verify(notificationPreferencesService).getSettings(73L);
+        verify(notificationPreferencesService).updateSettings(73L, request);
     }
 
     @Test
@@ -206,10 +204,10 @@ class MiniAppControllerTest {
                 "Изменена аудитория",
                 java.time.OffsetDateTime.parse("2026-08-30T10:15:30+03:00"),
                 "TEMPORARY_FAILURE");
-        when(notificationPreferencesService.getHistory(123456789L)).thenReturn(List.of(failed));
+        when(notificationPreferencesService.getHistory(73L)).thenReturn(List.of(failed));
 
         assertEquals(List.of(failed), controller.getNotificationHistory("Bearer token").getBody());
-        verify(notificationPreferencesService).getHistory(123456789L);
+        verify(notificationPreferencesService).getHistory(73L);
     }
 
 }

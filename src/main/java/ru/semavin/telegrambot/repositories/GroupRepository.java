@@ -22,21 +22,21 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
             UPDATE groups AS g
             SET starosta_id = u.id
             FROM users AS u
-            WHERE u.telegram_id = :telegramId
+            WHERE u.id = :userId
               AND u.group_id = g.id
               AND g.starosta_id IS NULL
             """, nativeQuery = true)
-    int claimStarostaForOwnGroup(@Param("telegramId") Long telegramId);
+    int claimStarostaForOwnGroup(@Param("userId") Long userId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
             UPDATE groups AS g
             SET starosta_id = NULL
             FROM users AS u
-            WHERE u.telegram_id = :telegramId
+            WHERE u.id = :userId
               AND u.group_id = g.id
               AND g.starosta_id = u.id
             """, nativeQuery = true)
-    int releaseStarostaForOwnGroup(@Param("telegramId") Long telegramId);
+    int releaseStarostaForOwnGroup(@Param("userId") Long userId);
 
 }

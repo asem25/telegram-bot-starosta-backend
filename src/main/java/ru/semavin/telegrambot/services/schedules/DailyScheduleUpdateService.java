@@ -17,7 +17,7 @@ public class DailyScheduleUpdateService {
 
     private final ScheduleActualizationService scheduleService;
 
-    @Scheduled(cron = "0 */1 * * * *", zone = "Europe/Moscow")
+    @Scheduled(cron = "${dailyscheduleupdate.cron}", zone = "Europe/Moscow")
     @CacheEvict(value = "scheduleDay", allEntries = true)
     public void updateDailySchedules() {
         val startTime = System.currentTimeMillis();

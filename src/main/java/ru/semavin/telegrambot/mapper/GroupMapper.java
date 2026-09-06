@@ -7,11 +7,6 @@ import ru.semavin.telegrambot.models.GroupEntity;
 @Mapper(componentModel = "spring")
 public interface GroupMapper {
 
-    /**
-     * Преобразуем GroupEntity -> GroupDTO.
-     * Берём group.starosta.username и складываем в dto.starostaUsername.
-     */
-    @Mapping(target = "starosta_username", source = "starosta.username")
     GroupDTO groupToDTO(GroupEntity group);
 
     /**
@@ -23,4 +18,3 @@ public interface GroupMapper {
     @Mapping(target = "starosta", ignore = true)
     GroupEntity groupDTOToGroup(GroupDTO dto);
 }
-

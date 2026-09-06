@@ -23,16 +23,16 @@ public class NotificationPreferencesService {
     private final NotificationHistoryRepository notificationHistoryRepository;
 
     @Transactional(readOnly = true)
-    public NotificationSettingsResponse getSettings(long telegramId) {
-        return toSettings(requireUser(telegramId));
+    public NotificationSettingsResponse getSettings(long userId) {
+        return toSettings(requireUser(userId));
     }
 
     @Transactional
     public NotificationSettingsResponse updateSettings(
-            long telegramId,
+            long userId,
             UpdateNotificationSettingsRequest request
     ) {
-        UserEntity user = requireUser(telegramId);
+        UserEntity user = requireUser(userId);
         user.setScheduleNotificationsEnabled(request.scheduleChangesEnabled());
         user.setDeadlineNotificationsEnabled(request.deadlineRemindersEnabled());
         user.setTelegramWriteAccessGranted(request.telegramWriteAccessGranted());
@@ -41,7 +41,7 @@ public class NotificationPreferencesService {
 
     @Transactional
     public void synchronizeTelegramWriteAccess(long telegramId, boolean granted) {
-        UserEntity user = requireUser(telegramId);
+        UserEntity user = requireTelegramUser(telegramId);
         if (user.isTelegramWriteAccessGranted() != granted) {
             user.setTelegramWriteAccessGranted(granted);
             userRepository.save(user);
@@ -49,14 +49,21 @@ public class NotificationPreferencesService {
     }
 
     @Transactional(readOnly = true)
-    public List<NotificationHistoryResponse> getHistory(long telegramId) {
-        return notificationHistoryRepository.findTop100ByUserOrderByCreatedAtDesc(requireUser(telegramId))
+    public List<NotificationHistoryResponse> getHistory(long userId) {
+        return notificationHistoryRepository.findTop100ByUserOrderByCreatedAtDesc(requireUser(userId))
                 .stream()
                 .map(this::toHistory)
                 .toList();
     }
 
-    private UserEntity requireUser(long telegramId) {
+    private UserEntity requireUser(long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> ExceptionFabric.create(
+                        UserNotFoundException.class,
+                        ExceptionMessages.USER_NOT_FOUND));
+    }
+
+    private UserEntity requireTelegramUser(long telegramId) {
         return userRepository.findByTelegramId(telegramId)
                 .orElseThrow(() -> ExceptionFabric.create(
                         UserNotFoundException.class,

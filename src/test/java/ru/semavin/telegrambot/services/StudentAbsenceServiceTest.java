@@ -1,5 +1,7 @@
 package ru.semavin.telegrambot.services;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.semavin.telegrambot.dto.StudentAbsenceRequest;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,10 +44,10 @@ class StudentAbsenceServiceTest {
     void createsLocalDateRangeForBearerStudentAndNormalizesEmptyReason() {
         UserEntity student = UserEntity.builder()
                 .id(1L).telegramId(100L).role(UserRole.STUDENT).build();
-        when(userRepository.findByTelegramId(100L)).thenReturn(Optional.of(student));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(student));
         when(absenceRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var response = service.create(100L, new StudentAbsenceRequest(
+        var response = service.create(1L, new StudentAbsenceRequest(
                 LocalDate.of(2026, 9, 2),
                 LocalDate.of(2026, 9, 4),
                 "  "));
@@ -58,9 +61,9 @@ class StudentAbsenceServiceTest {
     void rejectsReversedRangeBeforePersistence() {
         UserEntity student = UserEntity.builder()
                 .id(1L).telegramId(100L).role(UserRole.STUDENT).build();
-        when(userRepository.findByTelegramId(100L)).thenReturn(Optional.of(student));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(student));
 
-        assertThrows(MiniAppRequestException.class, () -> service.create(100L,
+        assertThrows(MiniAppRequestException.class, () -> service.create(1L,
                 new StudentAbsenceRequest(LocalDate.of(2026, 9, 4), LocalDate.of(2026, 9, 2), null)));
 
         verify(absenceRepository, never()).save(any());
@@ -68,21 +71,26 @@ class StudentAbsenceServiceTest {
 
     @Test
     void deletionIsScopedToAuthenticatedOwner() {
-        when(userRepository.findByTelegramId(100L)).thenReturn(Optional.of(UserEntity.builder().build()));
-        when(absenceRepository.deleteOwned(9L, 100L)).thenReturn(0);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(UserEntity.builder().id(1L).build()));
+        when(absenceRepository.deleteOwned(9L, 1L)).thenReturn(0);
 
-        assertThrows(AbsenceForbiddenException.class, () -> service.deleteOwn(100L, 9L));
+        assertThrows(AbsenceForbiddenException.class, () -> service.deleteOwn(1L, 9L));
 
-        verify(absenceRepository).deleteOwned(9L, 100L);
+        verify(absenceRepository).deleteOwned(9L, 1L);
     }
 
     @Test
-    void starostaReadsOnlyAbsencesSelectedByOwnGroupId() {
+    void starostaReadsOnlyPseudonymousAbsencesSelectedByOwnGroupId() throws Exception {
         UserEntity starosta = UserEntity.builder().id(1L).telegramId(100L).role(UserRole.STAROSTA).build();
         GroupEntity ownGroup = GroupEntity.builder().id(10L).starosta(starosta).build();
         starosta.setGroup(ownGroup);
-        UserEntity member = UserEntity.builder().id(2L).firstName("Студент").group(ownGroup).build();
-        when(userRepository.findByTelegramId(100L)).thenReturn(Optional.of(starosta));
+        UserEntity member = UserEntity.builder()
+                .id(2L)
+                .firstName("IgnoredFirst")
+                .lastName("IgnoredLast")
+                .group(ownGroup)
+                .build();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(starosta));
         when(absenceRepository.findAllByUserGroupIdOrderByStartDateDesc(10L)).thenReturn(List.of(
                 StudentAbsenceEntity.builder()
                         .id(3L).user(member)
@@ -90,7 +98,14 @@ class StudentAbsenceServiceTest {
                         .endDate(LocalDate.of(2026, 9, 2))
                         .build()));
 
-        assertEquals(1, service.getOwnGroup(100L).size());
+        var response = service.getOwnGroup(1L);
+
+        assertEquals(1, response.size());
+        assertEquals(2L, response.getFirst().studentId());
+        JsonNode json = new ObjectMapper().findAndRegisterModules().valueToTree(response.getFirst());
+        assertFalse(json.has("studentName"));
+        assertFalse(json.has("firstName"));
+        assertFalse(json.has("lastName"));
 
         verify(absenceRepository).findAllByUserGroupIdOrderByStartDateDesc(10L);
     }
@@ -101,9 +116,9 @@ class StudentAbsenceServiceTest {
         GroupEntity group = GroupEntity.builder().id(10L).starosta(anotherStarosta).build();
         UserEntity caller = UserEntity.builder()
                 .id(1L).telegramId(100L).role(UserRole.STAROSTA).group(group).build();
-        when(userRepository.findByTelegramId(100L)).thenReturn(Optional.of(caller));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(caller));
 
-        assertThrows(AbsenceForbiddenException.class, () -> service.getOwnGroup(100L));
+        assertThrows(AbsenceForbiddenException.class, () -> service.getOwnGroup(1L));
 
         verify(absenceRepository, never()).findAllByUserGroupIdOrderByStartDateDesc(any());
     }

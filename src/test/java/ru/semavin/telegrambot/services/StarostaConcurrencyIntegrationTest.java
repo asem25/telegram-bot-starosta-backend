@@ -71,13 +71,11 @@ class StarostaConcurrencyIntegrationTest {
 
         UserEntity first = userRepository.saveAndFlush(UserEntity.builder()
                 .telegramId(telegramIdBase)
-                .username("race_a_" + suffix)
                 .role(UserRole.STUDENT)
                 .group(group)
                 .build());
         UserEntity second = userRepository.saveAndFlush(UserEntity.builder()
                 .telegramId(telegramIdBase + 1)
-                .username("race_b_" + suffix)
                 .role(UserRole.STUDENT)
                 .group(group)
                 .build());
@@ -88,9 +86,9 @@ class StarostaConcurrencyIntegrationTest {
         CountDownLatch start = new CountDownLatch(1);
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             Future<Boolean> firstClaim = executor.submit(
-                    () -> claimAfterSignal(first.getTelegramId(), ready, start));
+                    () -> claimAfterSignal(first.getId(), ready, start));
             Future<Boolean> secondClaim = executor.submit(
-                    () -> claimAfterSignal(second.getTelegramId(), ready, start));
+                    () -> claimAfterSignal(second.getId(), ready, start));
             ready.await();
             start.countDown();
 
@@ -118,24 +116,23 @@ class StarostaConcurrencyIntegrationTest {
         foreignGroupId = foreignGroup.getId();
         UserEntity user = userRepository.saveAndFlush(UserEntity.builder()
                 .telegramId(telegramId)
-                .username("own_" + suffix)
                 .role(UserRole.STUDENT)
                 .group(ownGroup)
                 .build());
         firstUserId = user.getId();
 
-        starostaService.claimOwnGroup(telegramId);
+        starostaService.claimOwnGroup(user.getId());
 
         assertEquals(user.getId(), groupRepository.findById(groupId).orElseThrow().getStarosta().getId());
         assertNull(groupRepository.findById(foreignGroupId).orElseThrow().getStarosta());
     }
 
-    private boolean claimAfterSignal(Long telegramId, CountDownLatch ready, CountDownLatch start)
+    private boolean claimAfterSignal(Long userId, CountDownLatch ready, CountDownLatch start)
             throws InterruptedException {
         ready.countDown();
         start.await();
         try {
-            starostaService.claimOwnGroup(telegramId);
+            starostaService.claimOwnGroup(userId);
             return true;
         } catch (MiniAppRoleConflictException expectedRaceLoss) {
             return false;

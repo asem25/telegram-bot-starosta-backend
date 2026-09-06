@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.dto.TelegramAuthResponse;
-import ru.semavin.telegrambot.dto.UserDTO;
 import ru.semavin.telegrambot.services.UserService;
 import ru.semavin.telegrambot.services.NotificationPreferencesService;
 import ru.semavin.telegrambot.utils.exceptions.AuthConfigurationException;
@@ -52,19 +51,12 @@ public class TelegramAuthService {
 
         JsonObject telegramUser = parseTelegramUser(values.get("user"));
         long telegramId = requiredLong(telegramUser, "id");
-        String username = optionalString(telegramUser, "username");
-        String firstName = requiredString(telegramUser, "first_name");
-        String lastName = optionalString(telegramUser, "last_name");
-        UserDTO user = userService.provisionTelegramUser(
-                telegramId,
-                username,
-                firstName,
-                lastName);
+        UserService.ProvisionedUser user = userService.provisionTelegramUser(telegramId);
         notificationPreferencesService.synchronizeTelegramWriteAccess(
                 telegramId,
                 optionalBoolean(telegramUser, "allows_write_to_pm"));
-        AccessTokenService.IssuedToken token = accessTokenService.issue(telegramId);
-        return new TelegramAuthResponse(token.value(), token.expiresInSeconds(), user);
+        AccessTokenService.IssuedToken token = accessTokenService.issue(user.userId());
+        return new TelegramAuthResponse(token.value(), token.expiresInSeconds(), user.profile());
     }
 
     private Map<String, String> parse(String initData) {
@@ -137,26 +129,6 @@ public class TelegramAuthService {
             return object.get(field).getAsLong();
         } catch (RuntimeException exception) {
             throw unauthorized("Telegram user не содержит идентификатор");
-        }
-    }
-
-    private String requiredString(JsonObject object, String field) {
-        String value = optionalString(object, field);
-        if (value == null || value.isBlank()) {
-            throw unauthorized("Telegram user не содержит обязательное поле профиля");
-        }
-        return value;
-    }
-
-    private String optionalString(JsonObject object, String field) {
-        try {
-            if (!object.has(field) || object.get(field).isJsonNull()) {
-                return null;
-            }
-            String value = object.get(field).getAsString().trim();
-            return value.isEmpty() ? null : value;
-        } catch (RuntimeException exception) {
-            throw unauthorized("Некорректные данные профиля Telegram user");
         }
     }
 

@@ -40,7 +40,7 @@ public class UserController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @RequestBody @Valid MiniAppGroupRequest request
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(userService.assignInitialGroup(telegramId, request.groupName()));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(userService.assignInitialGroup(userId, request.groupName()));
     }
 }

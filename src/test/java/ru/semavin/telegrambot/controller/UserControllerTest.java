@@ -33,19 +33,18 @@ class UserControllerTest {
     @Test
     void selectsOwnGroupForBearerIdentityOnly() {
         UserDTO expected = UserDTO.builder()
-                .telegramId(123456789L)
                 .groupName("М3О-503С-22")
                 .build();
-        when(accessTokenService.requireTelegramId("Bearer token")).thenReturn(123456789L);
-        when(userService.assignInitialGroup(123456789L, "М3О-503С-22")).thenReturn(expected);
+        when(accessTokenService.requireUserId("Bearer token")).thenReturn(73L);
+        when(userService.assignInitialGroup(73L, "М3О-503С-22")).thenReturn(expected);
 
         UserDTO body = controller.selectOwnGroup(
                 "Bearer token",
                 new MiniAppGroupRequest("М3О-503С-22")).getBody();
 
         assertEquals(expected, body);
-        verify(accessTokenService).requireTelegramId("Bearer token");
-        verify(userService).assignInitialGroup(123456789L, "М3О-503С-22");
+        verify(accessTokenService).requireUserId("Bearer token");
+        verify(userService).assignInitialGroup(73L, "М3О-503С-22");
     }
 
     @Test

@@ -26,16 +26,16 @@ public class StudentAbsenceService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public List<StudentAbsenceResponse> getOwn(Long telegramId) {
-        requireUser(telegramId);
-        return absenceRepository.findAllByUserTelegramIdOrderByStartDateDesc(telegramId).stream()
+    public List<StudentAbsenceResponse> getOwn(Long userId) {
+        requireUser(userId);
+        return absenceRepository.findAllByUserIdOrderByStartDateDesc(userId).stream()
                 .map(StudentAbsenceResponse::from)
                 .toList();
     }
 
     @Transactional
-    public StudentAbsenceResponse create(Long telegramId, StudentAbsenceRequest request) {
-        UserEntity user = requireUser(telegramId);
+    public StudentAbsenceResponse create(Long userId, StudentAbsenceRequest request) {
+        UserEntity user = requireUser(userId);
         requireStudent(user);
         if (request.endDate().isBefore(request.startDate())) {
             throw new MiniAppRequestException("Дата окончания отсутствия раньше даты начала");
@@ -51,16 +51,16 @@ public class StudentAbsenceService {
     }
 
     @Transactional
-    public void deleteOwn(Long telegramId, Long absenceId) {
-        requireUser(telegramId);
-        if (absenceRepository.deleteOwned(absenceId, telegramId) == 0) {
+    public void deleteOwn(Long userId, Long absenceId) {
+        requireUser(userId);
+        if (absenceRepository.deleteOwned(absenceId, userId) == 0) {
             throw new AbsenceForbiddenException("Можно удалить только собственный диапазон отсутствия");
         }
     }
 
     @Transactional(readOnly = true)
-    public List<GroupStudentAbsenceResponse> getOwnGroup(Long telegramId) {
-        UserEntity starosta = requireUser(telegramId);
+    public List<GroupStudentAbsenceResponse> getOwnGroup(Long userId) {
+        UserEntity starosta = requireUser(userId);
         if (starosta.getGroup() == null
                 || starosta.getGroup().getStarosta() == null
                 || !starosta.getId().equals(starosta.getGroup().getStarosta().getId())) {
@@ -71,8 +71,8 @@ public class StudentAbsenceService {
                 .toList();
     }
 
-    private UserEntity requireUser(Long telegramId) {
-        return userRepository.findByTelegramId(telegramId)
+    private UserEntity requireUser(Long userId) {
+        return userRepository.findById(userId)
                 .orElseThrow(() -> ExceptionFabric.create(
                         UserNotFoundException.class,
                         ExceptionMessages.USER_NOT_FOUND));

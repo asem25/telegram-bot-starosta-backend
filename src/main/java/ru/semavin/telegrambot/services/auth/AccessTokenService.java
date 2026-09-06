@@ -27,7 +27,7 @@ public class AccessTokenService {
     @Value("${telegram.auth.access-token-ttl-seconds:3600}")
     private long accessTokenTtlSeconds;
 
-    public IssuedToken issue(long telegramId) {
+    public IssuedToken issue(long userId) {
         validateConfiguration();
         long expiresAt;
         try {
@@ -35,13 +35,13 @@ public class AccessTokenService {
         } catch (ArithmeticException exception) {
             throw new AuthConfigurationException("Время жизни access token настроено некорректно");
         }
-        String payload = telegramId + ":" + expiresAt;
+        String payload = "v1:" + userId + ":" + expiresAt;
         String encodedPayload = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
         return new IssuedToken(encodedPayload + "." + sign(encodedPayload), accessTokenTtlSeconds);
     }
 
-    public long requireTelegramId(String authorizationHeader) {
+    public long requireUserId(String authorizationHeader) {
         validateConfiguration();
         if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
             throw unauthorized("Требуется Bearer-токен");
@@ -54,13 +54,16 @@ public class AccessTokenService {
 
         try {
             String payload = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
-            String[] values = payload.split(":", 2);
-            long telegramId = Long.parseLong(values[0]);
-            long expiresAt = Long.parseLong(values[1]);
+            String[] values = payload.split(":", 3);
+            if (values.length != 3 || !"v1".equals(values[0])) {
+                throw unauthorized("Некорректный access token");
+            }
+            long userId = Long.parseLong(values[1]);
+            long expiresAt = Long.parseLong(values[2]);
             if (Instant.now(clock).getEpochSecond() >= expiresAt) {
                 throw unauthorized("Срок действия access token истёк");
             }
-            return telegramId;
+            return userId;
         } catch (TelegramAuthenticationException exception) {
             throw exception;
         } catch (RuntimeException exception) {

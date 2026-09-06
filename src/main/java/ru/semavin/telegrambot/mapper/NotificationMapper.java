@@ -9,12 +9,12 @@ import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface NotificationMapper {
-    @Mapping(target = "username", source = "username.username")
-    @Mapping(target = "groupName", source = "groupName.groupName")
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "groupName", source = "group.groupName")
     NotificationDTO notificationToNotificationDTO(NotificationEntity notification);
 
-    @Mapping(target = "username", ignore = true)
-    @Mapping(target = "groupName", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "group", ignore = true)
     NotificationEntity notificationDTOToNotificationEntity(NotificationDTO notificationDTO);
 
     List<NotificationEntity> notificationDTOsToNotificationEntities(List<NotificationDTO> notificationDTOs);

@@ -63,9 +63,9 @@ public class ScheduleChangeService {
     @Transactional
     public MiniAppScheduleChangeResponse apply(
             MiniAppScheduleChangeRequest request,
-            long telegramId
+            long userId
     ) {
-        UserEntity author = userService.findByTelegramId(telegramId);
+        UserEntity author = userService.findById(userId);
         GroupEntity group = requireEditableGroup(author);
         String requestHash = requestHash(request);
         MiniAppScheduleChangeResponse replay = replayIfPresent(request, group, requestHash);

@@ -5,11 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import ru.semavin.telegrambot.dto.MiniAppScheduleChangeRequest;
-import ru.semavin.telegrambot.models.GroupEntity;
-import ru.semavin.telegrambot.models.NotificationHistoryEntity;
-import ru.semavin.telegrambot.models.ScheduleChangeEntity;
-import ru.semavin.telegrambot.models.ScheduleEntity;
-import ru.semavin.telegrambot.models.UserEntity;
+import ru.semavin.telegrambot.models.*;
 import ru.semavin.telegrambot.models.enums.LessonType;
 import ru.semavin.telegrambot.models.enums.ScheduleChangeOperation;
 import ru.semavin.telegrambot.models.enums.ScheduleChangeScope;
@@ -24,21 +20,16 @@ import ru.semavin.telegrambot.utils.exceptions.ScheduleChangeForbiddenException;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.*;
 
 class ScheduleChangeServiceTest {
     private ScheduleChangeRepository changeRepository;
@@ -92,7 +83,7 @@ class ScheduleChangeServiceTest {
                 .controlSum("source-sum")
                 .build();
 
-        when(userService.findByTelegramId(100L)).thenReturn(starosta);
+        when(userService.findById(1L)).thenReturn(starosta);
         when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
         when(scheduleRepository.findByOccurrenceIdForUpdate(occurrenceId)).thenReturn(Optional.of(source));
         when(changeRepository.findFirstByOccurrenceIdOrderByVersionDesc(occurrenceId))
@@ -108,7 +99,7 @@ class ScheduleChangeServiceTest {
                 .role(UserRole.STUDENT).group(group).scheduleNotificationsEnabled(true).build();
         group.getUsers().add(formerStarosta);
 
-        service.apply(request(UUID.randomUUID(), 0, ScheduleChangeOperation.UPDATE), 100L);
+        service.apply(request(UUID.randomUUID(), 0, ScheduleChangeOperation.UPDATE), 1L);
 
         verify(notificationHistoryRepository, times(2)).save(any(NotificationHistoryEntity.class));
         verify(notificationHistoryRepository).save(org.mockito.ArgumentMatchers.argThat(event ->
@@ -122,7 +113,7 @@ class ScheduleChangeServiceTest {
         starosta.setRole(UserRole.STUDENT);
 
         assertThrows(ScheduleChangeForbiddenException.class,
-                () -> service.apply(request(UUID.randomUUID(), 0, ScheduleChangeOperation.UPDATE), 100L));
+                () -> service.apply(request(UUID.randomUUID(), 0, ScheduleChangeOperation.UPDATE), 1L));
 
         verify(changeRepository, never()).saveAllAndFlush(any());
     }
@@ -134,7 +125,7 @@ class ScheduleChangeServiceTest {
                 occurrenceId, requestId, 0L, ScheduleChangeOperation.MOVE, ScheduleChangeScope.SINGLE,
                 null, null, null, null, "Moved",
                 LocalDate.of(2026, 9, 2), LocalTime.of(11, 0), LocalTime.of(12, 30)
-        ), 100L);
+        ), 1L);
 
         assertEquals(occurrenceId, response.lessonOccurrenceId());
         assertEquals(requestId, response.clientRequestId());
@@ -162,10 +153,10 @@ class ScheduleChangeServiceTest {
             return changes;
         });
 
-        var first = service.apply(request, 100L);
+        var first = service.apply(request, 1L);
         when(changeRepository.findByGroupAndClientRequestId(group, requestId))
                 .thenAnswer(ignored -> Optional.of(saved.get()));
-        var replay = service.apply(request, 100L);
+        var replay = service.apply(request, 1L);
 
         assertEquals(first, replay);
         verify(changeRepository, org.mockito.Mockito.times(1)).saveAllAndFlush(any());
@@ -184,13 +175,13 @@ class ScheduleChangeServiceTest {
                 .thenReturn(Optional.of(current));
 
         assertThrows(ScheduleChangeConflictException.class,
-                () -> service.apply(request(UUID.randomUUID(), 1, ScheduleChangeOperation.UPDATE), 100L));
+                () -> service.apply(request(UUID.randomUUID(), 1, ScheduleChangeOperation.UPDATE), 1L));
         verify(changeRepository, never()).saveAllAndFlush(any());
     }
 
     @Test
     void cancelCreatesDeletedSnapshot() {
-        service.apply(request(UUID.randomUUID(), 0, ScheduleChangeOperation.CANCEL), 100L);
+        service.apply(request(UUID.randomUUID(), 0, ScheduleChangeOperation.CANCEL), 1L);
 
         verify(changeRepository).saveAllAndFlush(org.mockito.ArgumentMatchers.argThat(changes ->
                 changes.iterator().next().isDeleted()
@@ -208,7 +199,7 @@ class ScheduleChangeServiceTest {
             saved.set(change);
             return changes;
         });
-        service.apply(firstRequest, 100L);
+        service.apply(firstRequest, 1L);
         when(changeRepository.findByGroupAndClientRequestId(group, requestId))
                 .thenAnswer(ignored -> Optional.of(saved.get()));
         MiniAppScheduleChangeRequest conflicting = new MiniAppScheduleChangeRequest(
@@ -218,7 +209,7 @@ class ScheduleChangeServiceTest {
         );
 
         assertThrows(ScheduleChangeConflictException.class,
-                () -> service.apply(conflicting, 100L));
+                () -> service.apply(conflicting, 1L));
         verify(changeRepository, org.mockito.Mockito.times(1)).saveAllAndFlush(any());
     }
 
@@ -236,7 +227,7 @@ class ScheduleChangeServiceTest {
                 LocalDate.of(2026, 9, 3), LocalTime.of(11, 0), LocalTime.of(12, 30)
         );
 
-        service.apply(request, 100L);
+        service.apply(request, 1L);
 
         verify(changeRepository).saveAllAndFlush(org.mockito.ArgumentMatchers.argThat(changes -> {
             List<ScheduleChangeEntity> result = new java.util.ArrayList<>();
@@ -268,7 +259,7 @@ class ScheduleChangeServiceTest {
             seriesSaved.set(changes);
             return changes;
         });
-        service.apply(seriesMove, 100L);
+        service.apply(seriesMove, 1L);
         ScheduleChangeEntity movedNextWeek = seriesSaved.get().stream()
                 .filter(change -> change.getOccurrenceId().equals(nextWeek.getOccurrenceId()))
                 .findFirst().orElseThrow();
@@ -283,7 +274,7 @@ class ScheduleChangeServiceTest {
                 null, null, null
         );
 
-        service.apply(individual, 100L);
+        service.apply(individual, 1L);
 
         List<ScheduleChangeEntity> individualSaved = seriesSaved.get();
         assertThat(individualSaved).singleElement().satisfies(change -> {
@@ -313,11 +304,11 @@ class ScheduleChangeServiceTest {
             saved.set(changes);
             return changes;
         });
-        service.apply(request, 100L);
+        service.apply(request, 1L);
         when(changeRepository.findAllByGroupAndBatchRequestIdOrderByIdAsc(group, requestId))
                 .thenAnswer(ignored -> saved.get());
 
-        service.apply(request, 100L);
+        service.apply(request, 1L);
 
         verify(changeRepository, org.mockito.Mockito.times(1)).saveAllAndFlush(any());
     }

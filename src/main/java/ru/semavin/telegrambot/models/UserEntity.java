@@ -33,23 +33,18 @@ public class UserEntity {
     private Long telegramId;
 
     /**
-     * Никнейм пользователя (username) в Telegram.
-     */
-    @Column(name = "username")
-    private String username;
-    /**
-     * Отчество пользователя
+     * Teacher patronymic. Student profile names are never stored.
      */
     @Column(name = "patronymic")
     private String patronymic;
     /**
-     * Имя пользователя.
+     * Teacher first name. Student profile names are never stored.
      */
     @Column(name = "first_name")
     private String firstName;
 
     /**
-     * Фамилия пользователя.
+     * Teacher last name. Student profile names are never stored.
      */
     @Column(name = "last_name")
     private String lastName;
@@ -58,7 +53,7 @@ public class UserEntity {
      * Роль пользователя в системе (например, STUDENT, STAROSTA, ADMIN, TEACHER).
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "role")
+    @Column(name = "role", nullable = false)
     @ToString.Include
     private UserRole role;
 

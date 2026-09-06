@@ -23,9 +23,9 @@ public class StarostaService {
     private final UserMapper userMapper;
 
     @Transactional
-    public UserDTO claimOwnGroup(Long telegramId) {
-        int claimed = groupRepository.claimStarostaForOwnGroup(telegramId);
-        UserEntity user = requireUser(telegramId);
+    public UserDTO claimOwnGroup(Long userId) {
+        int claimed = groupRepository.claimStarostaForOwnGroup(userId);
+        UserEntity user = requireUser(userId);
         requireMembership(user);
 
         if (claimed == 0) {
@@ -41,9 +41,9 @@ public class StarostaService {
     }
 
     @Transactional
-    public UserDTO releaseOwnGroup(Long telegramId) {
-        int released = groupRepository.releaseStarostaForOwnGroup(telegramId);
-        UserEntity user = requireUser(telegramId);
+    public UserDTO releaseOwnGroup(Long userId) {
+        int released = groupRepository.releaseStarostaForOwnGroup(userId);
+        UserEntity user = requireUser(userId);
         requireMembership(user);
 
         if (released == 0) {
@@ -54,8 +54,8 @@ public class StarostaService {
         return userMapper.userToUserDTO(userRepository.save(user));
     }
 
-    private UserEntity requireUser(Long telegramId) {
-        return userRepository.findByTelegramId(telegramId)
+    private UserEntity requireUser(Long userId) {
+        return userRepository.findById(userId)
                 .orElseThrow(() -> ExceptionFabric.create(
                         UserNotFoundException.class,
                         ExceptionMessages.USER_NOT_FOUND));

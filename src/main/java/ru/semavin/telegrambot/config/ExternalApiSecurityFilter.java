@@ -61,7 +61,7 @@ public class ExternalApiSecurityFilter extends OncePerRequestFilter {
         if (isProtectedApiPath(path)) {
             response.setHeader("Cache-Control", "private, no-store");
             try {
-                accessTokenService.requireTelegramId(request.getHeader("Authorization"));
+                accessTokenService.requireUserId(request.getHeader("Authorization"));
             } catch (TelegramAuthenticationException | AuthConfigurationException exception) {
                 exceptionResolver.resolveException(request, response, null, exception);
                 return;

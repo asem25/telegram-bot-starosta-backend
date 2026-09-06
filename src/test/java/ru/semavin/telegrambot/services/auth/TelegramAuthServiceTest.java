@@ -1,5 +1,7 @@
 package ru.semavin.telegrambot.services.auth;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -18,6 +20,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -43,41 +46,46 @@ class TelegramAuthServiceTest {
     }
 
     @Test
-    void provisionsNewUserFromValidTelegramInitData() throws Exception {
+    void ignoresTelegramProfileFieldsAndReturnsOnlySafeUserJson() throws Exception {
         long telegramId = 987654321L;
+        long internalUserId = 73L;
         UserDTO user = UserDTO.builder()
-                .telegramId(telegramId)
-                .username("student")
+                .role("STUDENT")
+                .groupName("TEST-GROUP")
                 .build();
-        when(userService.provisionTelegramUser(
-                telegramId, "student", "Test", "User"))
-                .thenReturn(user);
-        when(accessTokenService.issue(telegramId))
+        when(userService.provisionTelegramUser(telegramId))
+                .thenReturn(new UserService.ProvisionedUser(internalUserId, user));
+        when(accessTokenService.issue(internalUserId))
                 .thenReturn(new AccessTokenService.IssuedToken("access-token", 3600));
 
         TelegramAuthResponse response = service.authenticate(validInitData(
-                telegramId, "student", "Test", "User"));
+                telegramId, "ignored_username", "IgnoredFirst", "IgnoredLast"));
 
         assertEquals("access-token", response.accessToken());
-        assertEquals(telegramId, response.user().getTelegramId());
-        verify(userService).provisionTelegramUser(
-                telegramId, "student", "Test", "User");
+        assertEquals("STUDENT", response.user().getRole());
+        assertEquals("TEST-GROUP", response.user().getGroupName());
+        JsonNode userJson = new ObjectMapper().valueToTree(response).get("user");
+        assertFalse(userJson.has("telegramId"));
+        assertFalse(userJson.has("username"));
+        assertFalse(userJson.has("firstName"));
+        assertFalse(userJson.has("lastName"));
+        assertFalse(userJson.has("patronymic"));
+        verify(userService).provisionTelegramUser(telegramId);
+        verify(accessTokenService).issue(internalUserId);
         verify(notificationPreferencesService).synchronizeTelegramWriteAccess(telegramId, false);
     }
 
     @Test
     void refreshesExistingUserThroughTheSameAtomicProvisioningPath() throws Exception {
         long telegramId = 987654322L;
+        long internalUserId = 74L;
         UserDTO existingUser = UserDTO.builder()
-                .telegramId(telegramId)
-                .username("updated_name")
                 .role("STAROSTA")
                 .groupName("TEST-GROUP")
                 .build();
-        when(userService.provisionTelegramUser(
-                telegramId, "updated_name", "Updated", "Profile"))
-                .thenReturn(existingUser);
-        when(accessTokenService.issue(telegramId))
+        when(userService.provisionTelegramUser(telegramId))
+                .thenReturn(new UserService.ProvisionedUser(internalUserId, existingUser));
+        when(accessTokenService.issue(internalUserId))
                 .thenReturn(new AccessTokenService.IssuedToken("access-token", 3600));
 
         TelegramAuthResponse response = service.authenticate(validInitData(
@@ -85,25 +93,26 @@ class TelegramAuthServiceTest {
 
         assertEquals("STAROSTA", response.user().getRole());
         assertEquals("TEST-GROUP", response.user().getGroupName());
-        verify(userService).provisionTelegramUser(
-                telegramId, "updated_name", "Updated", "Profile");
+        verify(userService).provisionTelegramUser(telegramId);
+        verify(accessTokenService).issue(internalUserId);
     }
 
     @Test
-    void acceptsTelegramUserWithoutUsername() throws Exception {
+    void acceptsTelegramUserWithoutAnyProfileFields() throws Exception {
         long telegramId = 987654323L;
-        UserDTO user = UserDTO.builder().telegramId(telegramId).build();
-        when(userService.provisionTelegramUser(
-                telegramId, null, "Test", null))
-                .thenReturn(user);
-        when(accessTokenService.issue(telegramId))
+        long internalUserId = 75L;
+        UserDTO user = UserDTO.builder().build();
+        when(userService.provisionTelegramUser(telegramId))
+                .thenReturn(new UserService.ProvisionedUser(internalUserId, user));
+        when(accessTokenService.issue(internalUserId))
                 .thenReturn(new AccessTokenService.IssuedToken("access-token", 3600));
 
         TelegramAuthResponse response = service.authenticate(validInitData(
-                telegramId, null, "Test", null));
+                telegramId, null, null, null));
 
-        assertEquals(telegramId, response.user().getTelegramId());
-        verify(userService).provisionTelegramUser(telegramId, null, "Test", null);
+        assertEquals("STUDENT", response.user().getRole());
+        verify(userService).provisionTelegramUser(telegramId);
+        verify(accessTokenService).issue(internalUserId);
     }
 
     @Test
@@ -113,10 +122,7 @@ class TelegramAuthServiceTest {
 
         assertThrows(TelegramAuthenticationException.class, () -> service.authenticate(initData));
         verify(userService, never()).provisionTelegramUser(
-                org.mockito.ArgumentMatchers.anyLong(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any());
+                org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test
@@ -141,10 +147,10 @@ class TelegramAuthServiceTest {
     ) throws Exception {
         String authDate = String.valueOf(Instant.now().getEpochSecond());
         StringBuilder userJsonBuilder = new StringBuilder("{\"id\":")
-                .append(telegramId)
-                .append(",\"first_name\":\"")
-                .append(firstName)
-                .append("\"");
+                .append(telegramId);
+        if (firstName != null) {
+            userJsonBuilder.append(",\"first_name\":\"").append(firstName).append("\"");
+        }
         if (lastName != null) {
             userJsonBuilder.append(",\"last_name\":\"").append(lastName).append("\"");
         }

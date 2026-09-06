@@ -40,11 +40,11 @@ class UserServiceMiniAppGroupTest {
     @Test
     void assignsNormalizedGroupWhenUserHasNoGroup() {
         GroupEntity group = GroupEntity.builder().id(7L).groupName("GROUP-1").build();
-        UserEntity user = UserEntity.builder().telegramId(123L).group(group).build();
-        UserDTO expected = UserDTO.builder().telegramId(123L).groupName("GROUP-1").build();
+        UserEntity user = UserEntity.builder().id(123L).group(group).build();
+        UserDTO expected = UserDTO.builder().groupName("GROUP-1").build();
         when(groupService.findEntityByName("group-1")).thenReturn(group);
         when(userRepository.assignInitialGroup(123L, 7L)).thenReturn(1);
-        when(userRepository.findByTelegramId(123L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(123L)).thenReturn(Optional.of(user));
         when(userMapper.userToUserDTO(user)).thenReturn(expected);
 
         UserDTO actual = userService.assignInitialGroup(123L, "  group-1  ");
@@ -56,11 +56,11 @@ class UserServiceMiniAppGroupTest {
     @Test
     void repeatedSelectionOfSameGroupIsIdempotent() {
         GroupEntity group = GroupEntity.builder().id(7L).groupName("GROUP-1").build();
-        UserEntity user = UserEntity.builder().telegramId(123L).group(group).build();
-        UserDTO expected = UserDTO.builder().telegramId(123L).groupName("GROUP-1").build();
+        UserEntity user = UserEntity.builder().id(123L).group(group).build();
+        UserDTO expected = UserDTO.builder().groupName("GROUP-1").build();
         when(groupService.findEntityByName("GROUP-1")).thenReturn(group);
         when(userRepository.assignInitialGroup(123L, 7L)).thenReturn(0);
-        when(userRepository.findByTelegramId(123L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(123L)).thenReturn(Optional.of(user));
         when(userMapper.userToUserDTO(user)).thenReturn(expected);
 
         assertSame(expected, userService.assignInitialGroup(123L, "GROUP-1"));
@@ -70,10 +70,10 @@ class UserServiceMiniAppGroupTest {
     void rejectsReplacingPreviouslySelectedGroup() {
         GroupEntity requestedGroup = GroupEntity.builder().id(7L).groupName("GROUP-1").build();
         GroupEntity currentGroup = GroupEntity.builder().id(8L).groupName("GROUP-2").build();
-        UserEntity user = UserEntity.builder().telegramId(123L).group(currentGroup).build();
+        UserEntity user = UserEntity.builder().id(123L).group(currentGroup).build();
         when(groupService.findEntityByName("GROUP-1")).thenReturn(requestedGroup);
         when(userRepository.assignInitialGroup(123L, 7L)).thenReturn(0);
-        when(userRepository.findByTelegramId(123L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(123L)).thenReturn(Optional.of(user));
 
         assertThrows(MiniAppGroupConflictException.class,
                 () -> userService.assignInitialGroup(123L, "GROUP-1"));

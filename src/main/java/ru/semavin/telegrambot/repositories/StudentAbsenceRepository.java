@@ -9,7 +9,7 @@ import ru.semavin.telegrambot.models.StudentAbsenceEntity;
 import java.util.List;
 
 public interface StudentAbsenceRepository extends JpaRepository<StudentAbsenceEntity, Long> {
-    List<StudentAbsenceEntity> findAllByUserTelegramIdOrderByStartDateDesc(Long telegramId);
+    List<StudentAbsenceEntity> findAllByUserIdOrderByStartDateDesc(Long userId);
 
     List<StudentAbsenceEntity> findAllByUserGroupIdOrderByStartDateDesc(Long groupId);
 
@@ -17,10 +17,10 @@ public interface StudentAbsenceRepository extends JpaRepository<StudentAbsenceEn
     @Query("""
             DELETE FROM StudentAbsenceEntity absence
             WHERE absence.id = :absenceId
-              AND absence.user.telegramId = :telegramId
+              AND absence.user.id = :userId
             """)
     int deleteOwned(
             @Param("absenceId") Long absenceId,
-            @Param("telegramId") Long telegramId
+            @Param("userId") Long userId
     );
 }

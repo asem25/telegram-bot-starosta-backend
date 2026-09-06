@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class RequestDTO {
     private Long id;
-    private String telegramTagUser;
+    private Long userId;
     private String groupName;
 }

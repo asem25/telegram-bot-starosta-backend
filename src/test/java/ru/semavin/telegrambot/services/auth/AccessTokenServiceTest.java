@@ -6,6 +6,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import ru.semavin.telegrambot.utils.exceptions.AuthConfigurationException;
 import ru.semavin.telegrambot.utils.exceptions.TelegramAuthenticationException;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -21,10 +24,14 @@ class AccessTokenServiceTest {
 
     @Test
     void issuesAndValidatesToken() {
-        AccessTokenService.IssuedToken token = service.issue(123456789L);
+        long internalUserId = 73L;
+        AccessTokenService.IssuedToken token = service.issue(internalUserId);
 
-        assertEquals(123456789L, service.requireTelegramId("Bearer " + token.value()));
+        assertEquals(internalUserId, service.requireUserId("Bearer " + token.value()));
         assertEquals(3600L, token.expiresInSeconds());
+        String encodedPayload = token.value().substring(0, token.value().indexOf('.'));
+        String payload = new String(Base64.getUrlDecoder().decode(encodedPayload), StandardCharsets.UTF_8);
+        assertEquals("v1:" + internalUserId, payload.substring(0, payload.lastIndexOf(':')));
     }
 
     @Test
@@ -33,7 +40,7 @@ class AccessTokenServiceTest {
 
         assertThrows(
                 TelegramAuthenticationException.class,
-                () -> service.requireTelegramId("Bearer " + token.value() + "changed"));
+                () -> service.requireUserId("Bearer " + token.value() + "changed"));
     }
 
     @Test

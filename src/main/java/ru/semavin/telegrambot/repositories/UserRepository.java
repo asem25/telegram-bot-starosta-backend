@@ -12,8 +12,6 @@ import java.util.Set;
 
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
-    Optional<UserEntity> findByUsername(String username);
-
     Optional<UserEntity> findByTelegramId(Long telegramId);
 
     /**
@@ -23,36 +21,27 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(value = """
             UPDATE users
             SET group_id = :groupId
-            WHERE telegram_id = :telegramId
+            WHERE id = :userId
               AND group_id IS NULL
             """, nativeQuery = true)
     int assignInitialGroup(
-            @Param("telegramId") Long telegramId,
+            @Param("userId") Long userId,
             @Param("groupId") Long groupId
     );
 
     /**
-     * Atomically creates a Mini App user or refreshes the Telegram profile of an
-     * existing user. The conflict branch deliberately does not touch role or
-     * group_id, so opening the Mini App cannot revoke previously assigned access.
+     * Atomically creates a pseudonymous Mini App user. Re-authentication does not
+     * touch role, group or any teacher-only profile fields.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
-            INSERT INTO users (telegram_id, username, first_name, last_name, role, group_id)
-            VALUES (:telegramId, :username, :firstName, :lastName, 'STUDENT', NULL)
-            ON CONFLICT (telegram_id) DO UPDATE SET
-                username = EXCLUDED.username,
-                first_name = EXCLUDED.first_name,
-                last_name = EXCLUDED.last_name
+            INSERT INTO users (telegram_id, role, group_id)
+            VALUES (:telegramId, 'STUDENT', NULL)
+            ON CONFLICT (telegram_id) DO NOTHING
             """, nativeQuery = true)
     void upsertTelegramUser(
-            @Param("telegramId") Long telegramId,
-            @Param("username") String username,
-            @Param("firstName") String firstName,
-            @Param("lastName") String lastName
+            @Param("telegramId") Long telegramId
     );
-
-    boolean existsByTelegramId(Long telegramId);
 
     Optional<UserEntity> findByTeacherUuid(String teacherUuid);
 
@@ -70,12 +59,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Modifying
     @Query(value = """
             INSERT INTO users (first_name, last_name,
-                patronymic, role, teacher_uuid,
-                telegram_id, username, group_id
+                patronymic, role, teacher_uuid, group_id
             ) VALUES (
                 :firstName, :lastName, :patronymic,
-                :role, :teacherUuid, :teacherId,
-                :username, :groupId
+                :role, :teacherUuid, :groupId
             )
             ON CONFLICT (teacher_uuid)
             DO NOTHING;
@@ -86,8 +73,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             @Param("patronymic") String patronymic,
             @Param("role") String role,
             @Param("teacherUuid") String teacherUuid,
-            @Param("teacherId") Long teacherId,
-            @Param("username") String username,
             @Param("groupId") Long groupId
     );
 

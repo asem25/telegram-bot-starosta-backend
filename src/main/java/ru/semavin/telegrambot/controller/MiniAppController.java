@@ -105,16 +105,16 @@ public class MiniAppController {
     public ResponseEntity<UserDTO> claimStarosta(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(starostaService.claimOwnGroup(telegramId));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(starostaService.claimOwnGroup(userId));
     }
 
     @DeleteMapping("/starosta")
     public ResponseEntity<UserDTO> releaseStarosta(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(starostaService.releaseOwnGroup(telegramId));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(starostaService.releaseOwnGroup(userId));
     }
 
     @PostMapping("/schedule/changes")
@@ -122,16 +122,16 @@ public class MiniAppController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @Valid @RequestBody MiniAppScheduleChangeRequest request
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(scheduleChangeService.apply(request, telegramId));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(scheduleChangeService.apply(request, userId));
     }
 
     @GetMapping("/absences")
     public ResponseEntity<List<StudentAbsenceResponse>> getOwnAbsences(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(studentAbsenceService.getOwn(telegramId));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(studentAbsenceService.getOwn(userId));
     }
 
     @PostMapping("/absences")
@@ -139,9 +139,9 @@ public class MiniAppController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @Valid @RequestBody StudentAbsenceRequest request
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
+        long userId = accessTokenService.requireUserId(authorization);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(studentAbsenceService.create(telegramId, request));
+                .body(studentAbsenceService.create(userId, request));
     }
 
     @DeleteMapping("/absences/{absenceId}")
@@ -149,8 +149,8 @@ public class MiniAppController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @PathVariable Long absenceId
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        studentAbsenceService.deleteOwn(telegramId, absenceId);
+        long userId = accessTokenService.requireUserId(authorization);
+        studentAbsenceService.deleteOwn(userId, absenceId);
         return ResponseEntity.noContent().build();
     }
 
@@ -158,16 +158,16 @@ public class MiniAppController {
     public ResponseEntity<List<GroupStudentAbsenceResponse>> getOwnGroupAbsences(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(studentAbsenceService.getOwnGroup(telegramId));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(studentAbsenceService.getOwnGroup(userId));
     }
 
     @GetMapping("/notification-settings")
     public ResponseEntity<NotificationSettingsResponse> getNotificationSettings(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(notificationPreferencesService.getSettings(telegramId));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(notificationPreferencesService.getSettings(userId));
     }
 
     @PutMapping("/notification-settings")
@@ -175,21 +175,21 @@ public class MiniAppController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @RequestBody UpdateNotificationSettingsRequest request
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(notificationPreferencesService.updateSettings(telegramId, request));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(notificationPreferencesService.updateSettings(userId, request));
     }
 
     @GetMapping("/notifications")
     public ResponseEntity<List<NotificationHistoryResponse>> getNotificationHistory(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
     ) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return ResponseEntity.ok(notificationPreferencesService.getHistory(telegramId));
+        long userId = accessTokenService.requireUserId(authorization);
+        return ResponseEntity.ok(notificationPreferencesService.getHistory(userId));
     }
 
     private UserDTO currentUser(String authorization) {
-        long telegramId = accessTokenService.requireTelegramId(authorization);
-        return userService.getUserByTelegramId(telegramId);
+        long userId = accessTokenService.requireUserId(authorization);
+        return userService.getUserById(userId);
     }
 
     private void validateRange(LocalDate from, LocalDate to) {
