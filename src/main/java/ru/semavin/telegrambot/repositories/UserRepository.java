@@ -12,9 +12,36 @@ import java.util.Set;
 
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
-    Optional<UserEntity> findByUsername(String username);
+    Optional<UserEntity> findByTelegramId(Long telegramId);
 
-    boolean existsByTelegramId(Long telegramId);
+    /**
+     * Assigns the first group without allowing a concurrent request to replace it.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE users
+            SET group_id = :groupId
+            WHERE id = :userId
+              AND group_id IS NULL
+            """, nativeQuery = true)
+    int assignInitialGroup(
+            @Param("userId") Long userId,
+            @Param("groupId") Long groupId
+    );
+
+    /**
+     * Atomically creates a pseudonymous Mini App user. Re-authentication does not
+     * touch role, group or any teacher-only profile fields.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            INSERT INTO users (telegram_id, role, group_id)
+            VALUES (:telegramId, 'STUDENT', NULL)
+            ON CONFLICT (telegram_id) DO NOTHING
+            """, nativeQuery = true)
+    void upsertTelegramUser(
+            @Param("telegramId") Long telegramId
+    );
 
     Optional<UserEntity> findByTeacherUuid(String teacherUuid);
 
@@ -32,12 +59,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Modifying
     @Query(value = """
             INSERT INTO users (first_name, last_name,
-                patronymic, role, teacher_uuid,
-                telegram_id, username, group_id
+                patronymic, role, teacher_uuid, group_id
             ) VALUES (
                 :firstName, :lastName, :patronymic,
-                :role, :teacherUuid, :teacherId,
-                :username, :groupId
+                :role, :teacherUuid, :groupId
             )
             ON CONFLICT (teacher_uuid)
             DO NOTHING;
@@ -48,8 +73,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             @Param("patronymic") String patronymic,
             @Param("role") String role,
             @Param("teacherUuid") String teacherUuid,
-            @Param("teacherId") Long teacherId,
-            @Param("username") String username,
             @Param("groupId") Long groupId
     );
 

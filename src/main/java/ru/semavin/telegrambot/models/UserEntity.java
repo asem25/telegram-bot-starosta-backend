@@ -16,6 +16,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(onlyExplicitlyIncluded = true)
 public class UserEntity {
 
     /**
@@ -32,23 +33,18 @@ public class UserEntity {
     private Long telegramId;
 
     /**
-     * Никнейм пользователя (username) в Telegram.
-     */
-    @Column(name = "username")
-    private String username;
-    /**
-     * Отчество пользователя
+     * Teacher patronymic. Student profile names are never stored.
      */
     @Column(name = "patronymic")
     private String patronymic;
     /**
-     * Имя пользователя.
+     * Teacher first name. Student profile names are never stored.
      */
     @Column(name = "first_name")
     private String firstName;
 
     /**
-     * Фамилия пользователя.
+     * Teacher last name. Student profile names are never stored.
      */
     @Column(name = "last_name")
     private String lastName;
@@ -57,7 +53,8 @@ public class UserEntity {
      * Роль пользователя в системе (например, STUDENT, STAROSTA, ADMIN, TEACHER).
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "role")
+    @Column(name = "role", nullable = false)
+    @ToString.Include
     private UserRole role;
 
     /**
@@ -74,6 +71,17 @@ public class UserEntity {
     @Column(name = "teacher_uuid", unique = true)
     private String teacherUuid;
 
+    @Column(name = "schedule_notifications_enabled", nullable = false)
+    @Builder.Default
+    private boolean scheduleNotificationsEnabled = true;
+
+    @Column(name = "deadline_notifications_enabled", nullable = false)
+    @Builder.Default
+    private boolean deadlineNotificationsEnabled = true;
+
+    @Column(name = "telegram_write_access_granted", nullable = false)
+    private boolean telegramWriteAccessGranted;
+
     /**
      * Список групп, в которых преподаёт данный пользователь (при роли TEACHER).
      */
@@ -86,19 +94,4 @@ public class UserEntity {
     @Builder.Default
     private Set<GroupEntity> teachingGroups = new HashSet<>();
 
-    @Override
-    public String toString() {
-        return "UserEntity{" +
-                "id=" + id +
-                ", telegramId=" + telegramId +
-                ", username='" + username + '\'' +
-                ", patronymic='" + patronymic + '\'' +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", role=" + role +
-                ", group=" + group.getGroupName() +
-                ", teacherUuid='" + teacherUuid + '\'' +
-                ", teachingGroups=" + teachingGroups +
-                '}';
-    }
 }

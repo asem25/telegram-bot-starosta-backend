@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -36,7 +35,7 @@ public class NotificationEntity {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity username; // можно назвать user, чтобы было понятнее
+    private UserEntity user;
 
     /**
      * Ссылка на сущность группы.
@@ -44,7 +43,7 @@ public class NotificationEntity {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
-    private GroupEntity groupName; // можно назвать groupEntity, чтобы было понятнее
+    private GroupEntity group;
 
     /**
      * Описание/причина пропуска

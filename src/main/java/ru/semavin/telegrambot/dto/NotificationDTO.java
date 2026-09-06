@@ -14,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class NotificationDTO {
     private UUID uuid;
-    private String username;
+    private Long userId;
     private String groupName;
     private String description;
     private LocalDate fromDate;

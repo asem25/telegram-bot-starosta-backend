@@ -19,8 +19,8 @@ public class DeadlineDTO {
     private String description;
     private LocalDate dueDate;
     private String groupName;
-    private String username;
-    private List<String> receivers;
+    private Long creatorId;
+    private List<Long> receiverIds;
 
     private boolean notified3Days;
     private boolean notified1Day;

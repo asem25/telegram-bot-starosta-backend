@@ -9,22 +9,42 @@ import ru.semavin.telegrambot.models.enums.LessonType;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.UUID;
+import ru.semavin.telegrambot.services.schedules.ScheduleSeriesIdService;
 
 /**
  * Сущность расписания (schedule).
  * Хранит информацию о парах: предмет, тип, время, преподаватель и т.д.
  */
 @Entity
-@Table(name = "schedule")
+@Table(name = "schedule", indexes = {
+        @Index(name = "idx_schedule_group_series_date", columnList = "group_id,series_id,lesson_date")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class ScheduleEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "occurrence_id", unique = true)
+    private UUID occurrenceId;
+
+    @Column(name = "series_id")
+    private UUID seriesId;
+
+    @PrePersist
+    void assignOccurrenceId() {
+        if (occurrenceId == null) {
+            occurrenceId = UUID.randomUUID();
+        }
+        if (seriesId == null) {
+            seriesId = ScheduleSeriesIdService.calculate(this);
+        }
+    }
 
     /**
      * Ссылка на группу, к которой относится данное расписание.

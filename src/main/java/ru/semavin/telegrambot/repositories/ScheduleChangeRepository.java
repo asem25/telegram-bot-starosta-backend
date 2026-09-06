@@ -8,8 +8,23 @@ import ru.semavin.telegrambot.models.ScheduleChangeEntity;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public interface ScheduleChangeRepository extends JpaRepository<ScheduleChangeEntity, Long> {
+
+    Optional<ScheduleChangeEntity> findByGroupAndClientRequestId(GroupEntity group, UUID clientRequestId);
+
+    List<ScheduleChangeEntity> findAllByGroupAndBatchRequestIdOrderByIdAsc(
+            GroupEntity group,
+            UUID batchRequestId
+    );
+
+    Optional<ScheduleChangeEntity> findFirstByOccurrenceIdOrderByVersionDesc(UUID occurrenceId);
+
+    List<ScheduleChangeEntity> findAllByOccurrenceIdOrderByVersionAsc(UUID occurrenceId);
+
+    List<ScheduleChangeEntity> findAllByGroupOrderByIdAsc(GroupEntity group);
 
     List<ScheduleChangeEntity> findAllByGroupAndOldLessonDate(GroupEntity group, LocalDate date);
 
@@ -23,4 +38,3 @@ public interface ScheduleChangeRepository extends JpaRepository<ScheduleChangeEn
                                                      @Param("date") LocalDate date);
 
 }
-

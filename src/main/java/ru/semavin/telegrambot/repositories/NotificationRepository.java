@@ -10,5 +10,5 @@ import java.util.UUID;
 public interface NotificationRepository extends JpaRepository<NotificationEntity, Long> {
     void deleteByUuid(UUID uuid);
 
-    List<NotificationEntity> findAllByGroupName(GroupEntity group);
+    List<NotificationEntity> findAllByGroup(GroupEntity group);
 }

@@ -2,6 +2,8 @@ package ru.semavin.telegrambot.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.ScheduleEntity;
@@ -10,10 +12,19 @@ import ru.semavin.telegrambot.models.enums.LessonType;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import jakarta.persistence.LockModeType;
 
 public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> {
 
     List<ScheduleEntity> findAllByLessonDateAndGroup(LocalDate lessonDate, GroupEntity group);
+
+    List<ScheduleEntity> findAllByGroup(GroupEntity group);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select sh from ScheduleEntity sh where sh.occurrenceId = :occurrenceId")
+    Optional<ScheduleEntity> findByOccurrenceIdForUpdate(@Param("occurrenceId") UUID occurrenceId);
 
     /**
      * Удаляет все записи расписания для указанной группы
@@ -21,7 +32,9 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
      * @param group название групп
      */
 
-    void deleteAllByGroup(GroupEntity group);
+    @Modifying(flushAutomatically = true)
+    @Query("delete from ScheduleEntity sh where sh.group = :group")
+    void deleteAllByGroup(@Param("group") GroupEntity group);
 
     ScheduleEntity findByGroupAndLessonDateAndStartTime(GroupEntity group, LocalDate lessonDate, LocalTime startTime);
 

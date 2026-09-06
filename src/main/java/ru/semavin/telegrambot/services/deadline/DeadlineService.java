@@ -11,7 +11,6 @@ import ru.semavin.telegrambot.models.GroupEntity;
 import ru.semavin.telegrambot.models.enums.ExceptionMessages;
 import ru.semavin.telegrambot.repositories.DeadlineRepository;
 import ru.semavin.telegrambot.repositories.UserRepository;
-import ru.semavin.telegrambot.services.UserService;
 import ru.semavin.telegrambot.services.groups.GroupService;
 import ru.semavin.telegrambot.utils.ExceptionFabric;
 import ru.semavin.telegrambot.utils.exceptions.DeadlineNotFoundException;
@@ -20,7 +19,6 @@ import ru.semavin.telegrambot.utils.exceptions.UserNotFoundException;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -39,7 +37,7 @@ public class DeadlineService {
     }
 
     public DeadlineDTO save(DeadlineDTO dto) {
-        if (dto.getUsername() == null) {
+        if (dto.getCreatorId() == null) {
             throw ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND);
         }
         if (dto.getGroupName() == null) {
@@ -47,7 +45,7 @@ public class DeadlineService {
         }
         DeadlineEntity entity = mapper.toEntity(dto);
         entity.setGroup(groupService.findEntityByName(dto.getGroupName()));
-        entity.setCreator(userRepository.findByUsername(dto.getUsername())
+        entity.setCreator(userRepository.findById(dto.getCreatorId())
                 .orElseThrow(() -> ExceptionFabric.create(UserNotFoundException.class, ExceptionMessages.USER_NOT_FOUND)));
         return mapper.toDto(repository.save(entity));
     }

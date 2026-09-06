@@ -43,6 +43,6 @@ public class DailyScheduleUpdateService {
      * @return список названий групп
      */
     private List<String> getAllGroups() {
-        return List.of("М3О-403С-22");
+        return List.of("М3О-503С-22");
     }
 }
