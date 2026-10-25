@@ -55,6 +55,7 @@ jobs:
           username: ${{ secrets.BACKEND_SERVER_USER }}
           key: ${{ secrets.BACKEND_SERVER_SSH_KEY }}
           envs: DEPLOY_PATH,IMAGE_NAME,IMAGE_TAG
+          command_timeout: 40m
           script: |
             set -eu
             cd "$DEPLOY_PATH"

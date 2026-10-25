@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.springframework.stereotype.Service;
 import ru.semavin.telegrambot.dto.GroupDTO;
 import ru.semavin.telegrambot.mapper.GroupMapper;
@@ -27,11 +28,21 @@ public class GroupService {
     @PostConstruct
     @Transactional
     public void init() {
-        groupParserService.findAllGroups().forEach(group -> {
+        val actualGroups = getAllGroups();
+        actualGroups.forEach(group -> {
             if (groupRepository.findByGroupNameIgnoreCase(group.getGroupName()).isEmpty()) {
                 groupRepository.save(group);
             }
         });
+    }
+
+    private List<GroupEntity> getAllGroups() {
+        try {
+            return groupParserService.findAllGroups();
+        } catch (Exception e) {
+            log.error("Ошибка получения групп", e);
+            return List.of();
+        }
     }
 
     public GroupDTO findDtoByName(String name) {
